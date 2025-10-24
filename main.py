@@ -1,5 +1,9 @@
-def main():
-    print("Добро пожаловать в Лабиринт сокровищ!")
+# main.py
+import sys
+from valutatrade_hub.cli.interface import main as cli_main
 
-if __name__ == "__main__":
+def main():
+    cli_main()
+
+if __name__ == '__main__':
     main()

@@ -8,6 +8,9 @@ authors = [
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
+    "requests (>=2.32.5,<3.0.0)",
+    "prettytable (>=3.16.0,<4.0.0)",
+    "python-dotenv (>=1.1.1,<2.0.0)"
 ]
 
 
@@ -21,9 +24,15 @@ packages = [
  ]
 
 [tool.poetry.scripts]
-project = "main:main"
+project = "valutatrade_hub.cli.interface:main"
+
 [dependency-groups]
 dev = [
     "ruff (>=0.14.1,<0.15.0)",
-    "prettytable (>=3.16.0,<4.0.0)"
+    "pytest (>=8.4.2,<9.0.0)"
 ]
+
+[tool.ruff]
+line-length = 120
+select = ["E", "W", "F", "I", "C", "B", "B9"]
+ignore = []
