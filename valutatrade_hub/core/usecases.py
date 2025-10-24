@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 from decimal import Decimal
 
 from .utils import data_manager, rate_manager
+from .models import ValidationError  # Добавлен импорт класса ValidationError
 
 # --- Исключения (для CLI) ---
 class UserNotFoundError(Exception): pass
@@ -159,10 +160,11 @@ def buy_currency(user_id, currency, amount):
     portfolios = data_manager.get_all_portfolios()
     for i, portfolio in enumerate(portfolios):
         if portfolio['user_id'] == user_id:
-            portfolios[i] = portfolio_raw
+            portfolio = portfolio_raw
+            portfolios[i] = portfolio 
             break
     
-    data_manager.save_portfolios(portfolios)
+    data_manager.save_portfolios(portfolios) # Save updated portfolios list
 
     return f"Покупка выполнена: {amount_dec:.4f} {currency} по курсу {rate:.2f} USD/{currency}"
 
@@ -212,11 +214,12 @@ def sell_currency(user_id, currency, amount):
 
     portfolio_raw['wallets'][BASE_CURRENCY]['balance'] = str((usd_balance + revenue).quantize(Decimal("0.0000")))
 
-    # Находим индекс портфеля пользователя
+     # Находим индекс портфеля пользователя
     portfolios = data_manager.get_all_portfolios()
     for i, portfolio in enumerate(portfolios):
         if portfolio['user_id'] == user_id:
-            portfolios[i] = portfolio_raw
+            portfolio = portfolio_raw
+            portfolios[i] = portfolio 
             break
 
     data_manager.save_portfolios(portfolios)
