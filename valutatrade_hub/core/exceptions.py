@@ -1,31 +1,38 @@
 # valutatrade_hub/core/exceptions.py
-from .models import ValidationError
 
-class InsufficientFundsError(Exception):
-    """Raised when trying to withdraw more than available balance."""
-    pass
-
-class CurrencyNotFoundError(Exception):
-    """Raised when a specified currency wallet does not exist."""
+class ValidationError(Exception):
+    """Базовое исключение для ошибок валидации входных данных."""
     pass
 
 class UserNotFoundError(Exception):
-    """Raised when a user cannot be found."""
+    """Исключение, когда пользователь не найден."""
     pass
 
 class InvalidCredentialsError(Exception):
-    """Raised when username/password combination is incorrect."""
+    """Исключение для неверных учетных данных."""
     pass
+
+class InsufficientFundsError(Exception):
+    """Исключение, когда недостаточно средств для операции."""
+    def __init__(self, message, available_amount, required_amount, currency_code):
+        super().__init__(message)
+        self.available_amount = available_amount
+        self.required_amount = required_amount
+        self.currency_code = currency_code
+
+class CurrencyNotFoundError(Exception):
+    """Исключение, когда запрошенная валюта не найдена."""
+    def __init__(self, message, code=None):
+        super().__init__(message)
+        self.code = code
 
 class ApiRequestError(Exception):
-    """Raised for issues connecting to external APIs."""
-    pass
+    """Исключение для сбоев при обращении к внешнему API."""
+    def __init__(self, message, reason=None):
+        super().__init__(message)
+        self.reason = reason
 
-# (Уже должно быть в файле, но дополним для полноты)
-class PortfolioNotFoundError(Exception):
-    """Raised when a user portfolio is missing."""
-    pass
-
-class TtlExpiredError(Exception):
-    """Raised when rate data is too old (TTL exceeded)."""
+# Дополнительные исключения, если потребуются в будущем
+class PortfolioError(Exception):
+    """Базовое исключение для ошибок портфеля."""
     pass

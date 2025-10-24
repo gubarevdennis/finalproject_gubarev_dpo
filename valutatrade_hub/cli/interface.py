@@ -1,11 +1,19 @@
+# valutatrade_hub/cli/interface.py
 import argparse
 import sys
 from prettytable import PrettyTable
 from decimal import Decimal
 
 from ..core import usecases
-from ..core.models import ValidationError
-from ..core.usecases import UserNotFoundError, InvalidCredentialsError, InsufficientFundsError, CurrencyNotFoundError, ApiRequestError
+# Импортируем измененные исключения
+from ..core.exceptions import (
+    ValidationError,
+    UserNotFoundError,
+    InvalidCredentialsError,
+    InsufficientFundsError,
+    CurrencyNotFoundError,
+    ApiRequestError
+)
 
 class CLIInterface:
     def __init__(self):
@@ -46,6 +54,7 @@ class CLIInterface:
         get_rate_parser.add_argument("--from", required=True, dest="from_currency", help="Исходная валюта")
         get_rate_parser.add_argument("--to", required=True, dest="to_currency", help="Целевая валюта")
         get_rate_parser.set_defaults(func=self.handle_get_rate)
+    
 
     def handle_register(self, args):
         try:
@@ -57,20 +66,15 @@ class CLIInterface:
     def handle_login(self, args):
         try:
             user_id = usecases.login_user(args.username, args.password)
-            self.user_id = user_id  # Фиксация сессии
+            self.user_id = user_id
             self.username = args.username
             print(f"Вы вошли как '{args.username}'")
-        except (UserNotFoundError, InvalidCredentialsError) as e:
-            if isinstance(e, UserNotFoundError):
-                 print("Ошибка: Пользователь 'alice' не найден")
-            else:
-                 print("Ошибка: Неверный пароль")
-            self.user_id = None
-            self.username = None
+        except UserNotFoundError:
+            print("Ошибка: Пользователь не найден")
+        except InvalidCredentialsError:
+            print("Ошибка: Неверный пароль")
         except ValidationError as e:
             print(f"Ошибка: {e}")
-            self.user_id = None
-            self.username = None
 
     def handle_show_portfolio(self, args):
         if not self.user_id:
@@ -90,6 +94,7 @@ class CLIInterface:
                  table.add_row(["", "", ""])
             else:
                  for currency, data in portfolio_data.items():
+                     # Форматирование выводим в CLI
                      table.add_row([currency, f"{data['balance']:.4f}", f"{data['value_in_base']:.2f}"])
 
             print(f"Портфель пользователя '{self.username}' (база: {args.base.upper()}):")
@@ -99,6 +104,9 @@ class CLIInterface:
 
         except (ValidationError, UserNotFoundError) as e:
             print(f"Ошибка: {e}")
+        except CurrencyNotFoundError as e:
+            print(f"Ошибка: Неизвестная базовая валюта '{e.code}'")
+
 
     def handle_buy(self, args):
         if not self.user_id:
@@ -109,15 +117,16 @@ class CLIInterface:
             amount = Decimal(str(args.amount))
             result = usecases.buy_currency(self.user_id, args.currency.upper(), amount)
             print(result)
-        except (ValidationError, InsufficientFundsError, ApiRequestError) as e:
-             if isinstance(e, ApiRequestError):
-                print(f"Ошибка: Не удалось получить курс для {args.currency.upper()}→USD")
-             elif isinstance(e, InsufficientFundsError):
-                 print("Ошибка: Недостаточно USD для совершения покупки.")
-             else:
-                print(f"Ошибка: {e}")
-        except ValueError:
-            print("Ошибка: 'amount' должен быть положительным числом")
+        except ValidationError as e:
+            print(f"Ошибка: {e}")
+        except InsufficientFundsError as e:
+            # Печатаем сообщение, которое было передано через исключение
+            print(e) 
+        except ApiRequestError:
+            print(f"Ошибка: Не удалось получить курс для {args.currency.upper()}→USD")
+        except CurrencyNotFoundError as e:
+            print(f"Ошибка: Неизвестная валюта '{e.code}'")
+
 
     def handle_sell(self, args):
         if not self.user_id:
@@ -128,26 +137,29 @@ class CLIInterface:
             amount = Decimal(str(args.amount))
             result = usecases.sell_currency(self.user_id, args.currency.upper(), amount)
             print(result)
-        except (ValidationError, CurrencyNotFoundError, InsufficientFundsError, ApiRequestError) as e:
-            if isinstance(e, CurrencyNotFoundError):
-                print(f"У вас нет кошелька '{args.currency.upper()}'. Добавьте валюту: она создаётся автоматически при первой покупке.")
-            elif isinstance(e, InsufficientFundsError):
-                print(f"Недостаточно средств: доступно {e.available:.4f} {e.currency}, требуется {e.required:.4f} {e.currency}")
-            elif isinstance(e, ApiRequestError):
-                print(f"Ошибка: Не удалось получить курс для {args.currency.upper()}→USD")
-            else:
-                print(f"Ошибка: {e}")
-        except ValueError:
-            print("Ошибка: 'amount' должен быть положительным числом")
+        except ValidationError as e:
+            print(f"Ошибка: {e}")
+        except CurrencyNotFoundError as e:
+            print(e) # Печатаем сообщение из исключения
+        except InsufficientFundsError as e:
+            print(e) # Печатаем сообщение из исключения
+        except ApiRequestError:
+            print(f"Ошибка: Не удалось получить курс для {args.currency.upper()}→USD")
+
 
     def handle_get_rate(self, args):
         try:
             result = usecases.get_rate(args.from_currency.upper(), args.to_currency.upper())
             print(result)
-        except (ValidationError, ApiRequestError) as e:
+        except CurrencyNotFoundError as e:
+            # Согласно ТЗ: предлагать help get-rate или показать список поддерживаемых кодов.
+            print(f"Курс {e.code} недоступен. Попробуйте команду 'get-rate' с известными валютами.") 
+        except ApiRequestError as e:
             print(f"Курс {args.from_currency.upper()}→{args.to_currency.upper()} недоступен. Повторите попытку позже.")
 
+
     def run(self):
+        # ... (логика интерактивного режима) ...
         if len(sys.argv) == 1:
             print("--- ValutaTrade Hub CLI (Интерактивный режим) ---")
             print("Введите команды или 'exit' для выхода.")
@@ -168,48 +180,60 @@ class CLIInterface:
                     command = args_list[0]
                     args_list = args_list[1:]
 
+                    # Парсинг для интерактивного режима
                     if command == "register":
-                        parser = argparse.ArgumentParser()
-                        parser.add_argument("--username", required=True)
-                        parser.add_argument("--password", required=True)
-                        args = parser.parse_args(args_list)
+                        parser_temp = argparse.ArgumentParser()
+                        parser_temp.add_argument("--username", required=True)
+                        parser_temp.add_argument("--password", required=True)
+                        args = parser_temp.parse_args(args_list)
                         self.handle_register(args)
                     elif command == "login":
-                        parser = argparse.ArgumentParser()
-                        parser.add_argument("--username", required=True)
-                        parser.add_argument("--password", required=True)
-                        args = parser.parse_args(args_list)
+                        parser_temp = argparse.ArgumentParser()
+                        parser_temp.add_argument("--username", required=True)
+                        parser_temp.add_argument("--password", required=True)
+                        args = parser_temp.parse_args(args_list)
                         self.handle_login(args)
                     elif command == "show-portfolio":
-                        parser = argparse.ArgumentParser()
-                        parser.add_argument("--base", default="USD")
-                        args = parser.parse_args(args_list)
+                        parser_temp = argparse.ArgumentParser()
+                        parser_temp.add_argument("--base", default="USD")
+                        args = parser_temp.parse_args(args_list)
                         self.handle_show_portfolio(args)
                     elif command == "buy":
-                        parser = argparse.ArgumentParser()
-                        parser.add_argument("--currency", required=True)
-                        parser.add_argument("--amount", required=True, type=float)
-                        args = parser.parse_args(args_list)
+                        parser_temp = argparse.ArgumentParser()
+                        parser_temp.add_argument("--currency", required=True)
+                        parser_temp.add_argument("--amount", required=True, type=float)
+                        args = parser_temp.parse_args(args_list)
                         self.handle_buy(args)
                     elif command == "sell":
-                        parser = argparse.ArgumentParser()
-                        parser.add_argument("--currency", required=True)
-                        parser.add_argument("--amount", required=True, type=float)
-                        args = parser.parse_args(args_list)
+                        parser_temp = argparse.ArgumentParser()
+                        parser_temp.add_argument("--currency", required=True)
+                        parser_temp.add_argument("--amount", required=True, type=float)
+                        args = parser_temp.parse_args(args_list)
                         self.handle_sell(args)
                     elif command == "get-rate":
-                        parser = argparse.ArgumentParser()
-                        parser.add_argument("--from", required=True, dest="from_currency")
-                        parser.add_argument("--to", required=True, dest="to_currency")
-                        args = parser.parse_args(args_list)
+                        parser_temp = argparse.ArgumentParser()
+                        parser_temp.add_argument("--from", required=True, dest="from_currency")
+                        parser_temp.add_argument("--to", required=True, dest="to_currency")
+                        args = parser_temp.parse_args(args_list)
                         self.handle_get_rate(args)
                     else:
                         print("Ошибка: Неизвестная команда")
 
-                except SystemExit:
+                except SystemExit: # argparse вызывает SystemExit при ошибках
                     pass
                 except Exception as e:
                     print(f"Непредвиденная ошибка: {e}")
+
+        else:
+            try:
+                args = self.parser.parse_args()
+                if hasattr(args, 'func'):
+                    args.func(self, args)
+            except SystemExit:
+                pass
+            except Exception as e:
+                print(f"Непредвиденная ошибка: {e}")
+
 
 def main():
     cli = CLIInterface()

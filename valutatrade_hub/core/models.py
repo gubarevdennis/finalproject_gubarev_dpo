@@ -1,12 +1,123 @@
 # valutatrade_hub/core/models.py
-import hashlib
-import secrets
-from datetime import datetime
+from decimal import Decimal
+import re
 
-class ValidationError(Exception):
-    pass
+from .exceptions import InsufficientFundsError, ValidationError, CurrencyNotFoundError
+from .currencies import get_currency # <--- Импорт get_currency
 
+class Currency: # ... (код класса Currency без изменений) ...
+    """Абстрактный базовый класс для всех валют."""
+    def __init__(self, name: str, code: str):
+        self._validate_code(code)
+        self._validate_name(name)
+        self._name = name
+        self._code = code
+
+    @property
+    def name(self) -> str:
+        return self._name
+
+    @name.setter
+    def name(self, value: str):
+        self._validate_name(value)
+        self._name = value
+
+    @property
+    def code(self) -> str:
+        return self._code
+
+    @code.setter
+    def code(self, value: str):
+        self._validate_code(value)
+        self._code = value
+
+    def _validate_code(self, code: str):
+        if not re.fullmatch(r"^[A-Z]{2,5}$", code):
+            raise ValidationError(
+                f"Код валюты '{code}' должен быть в верхнем регистре, от 2 до 5 символов и без пробелов."
+            )
+
+    def _validate_name(self, name: str):
+        if not name or not name.strip():
+            raise ValidationError("Имя валюты не может быть пустым.")
+
+    def get_display_info(self) -> str:
+        """Возвращает строковое представление валюты для UI/логов."""
+        return f"[{self.__class__.__name__.upper()}] {self.code} - {self.name}"
+
+    def __str__(self):
+        return self.get_display_info()
+
+    def __repr__(self):
+        return f"{self.__class__.__name__}(code='{self.code}', name='{self.name}')"
+
+
+class FiatCurrency(Currency):
+    """Класс для фиатных валют."""
+    def __init__(self, name: str, code: str, issuing_country: str):
+        super().__init__(name, code)
+        self._validate_issuing_country(issuing_country)
+        self._issuing_country = issuing_country
+
+    @property
+    def issuing_country(self) -> str:
+        return self._issuing_country
+
+    @issuing_country.setter
+    def issuing_country(self, value: str):
+        self._validate_issuing_country(value)
+        self._issuing_country = value
+
+    def _validate_issuing_country(self, value: str):
+        if not value or not value.strip():
+            raise ValidationError("Страна-эмитент не может быть пустой.")
+
+    def get_display_info(self) -> str:
+        return f"[FIAT] {self.code} — {self.name} (Issuing: {self.issuing_country})"
+
+
+class CryptoCurrency(Currency):
+    """Класс для криптовалют."""
+    def __init__(self, name: str, code: str, algorithm: str, market_cap: Decimal):
+        super().__init__(name, code)
+        self._validate_algorithm(algorithm)
+        self._validate_market_cap(market_cap)
+        self._algorithm = algorithm
+        self._market_cap = market_cap
+
+    @property
+    def algorithm(self) -> str:
+        return self._algorithm
+
+    @algorithm.setter
+    def algorithm(self, value: str):
+        self._validate_algorithm(value)
+        self._algorithm = value
+
+    @property
+    def market_cap(self) -> Decimal:
+        return self._market_cap
+
+    @market_cap.setter
+    def market_cap(self, value: Decimal):
+        self._validate_market_cap(value)
+        self._market_cap = value
+
+    def _validate_algorithm(self, value: str):
+        if not value or not value.strip():
+            raise ValidationError("Алгоритм не может быть пустым.")
+
+    def _validate_market_cap(self, value: Decimal):
+        if not isinstance(value, Decimal) or value < 0:
+            raise ValidationError("Рыночная капитализация должна быть положительным числом Decimal.")
+
+    def get_display_info(self) -> str:
+        return f"[CRYPTO] {self.code} — {self.name} (Algo: {self.algorithm}, MCAP: {self.market_cap:.2e})"
+
+
+# --- User Class (из предыдущей версии) ---
 class User:
+    """Пользователь системы."""
     def __init__(self, user_id: int, username: str, hashed_password: str, salt: str, registration_date: str):
         self._user_id = user_id
         self._username = username
@@ -40,69 +151,74 @@ class User:
     def registration_date(self) -> str:
         return self._registration_date
 
-    def get_user_info(self) -> dict:
-        return {
-            "user_id": self._user_id,
-            "username": self._username,
-            "registration_date": self._registration_date
-        }
+    def get_user_info(self) -> str:
+        return f"User ID: {self._user_id}, Username: {self._username}, Registration Date: {self._registration_date}"
 
     def change_password(self, new_password: str):
         if len(new_password) < 4:
             raise ValidationError("Пароль должен быть не короче 4 символов.")
-        self._hashed_password = hashlib.sha256((new_password + self._salt).encode()).hexdigest()
+        # Здесь должна быть логика с хешированием нового пароля
+        self._hashed_password = new_password # Замените на реальное хеширование с солью
 
     def verify_password(self, password: str) -> bool:
-        hashed_password = hashlib.sha256((password + self._salt).encode()).hexdigest()
-        return hashed_password == self._hashed_password
-
-    @classmethod
-    def create_new(cls, user_id: int, username: str, password: str):
-        if len(password) < 4:
-            raise ValidationError("Пароль должен быть не короче 4 символов.")
-        salt = secrets.token_hex(8)
-        hashed_password = hashlib.sha256((password + salt).encode()).hexdigest()
-        registration_date = datetime.utcnow().isoformat()
-        return cls(user_id, username, hashed_password, salt, registration_date)
+        # Здесь должна быть логика сравнения с хешем
+        return password == self._hashed_password # Замените на реальное сравнение с хешем
 
 
+# --- Wallet Class ---
 class Wallet:
-    def __init__(self, currency_code: str, balance: float = 0.0):
+    """Кошелёк пользователя для одной конкретной валюты."""
+    def __init__(self, currency_code: str, balance: Decimal = Decimal("0.0")):
+        # ВАЖНО: Валидация currency_code теперь через get_currency из currencies.py
+        try:
+            from .models import get_currency
+            get_currency(currency_code) # Проверка существования валюты
+        except CurrencyNotFoundError as e:
+            raise ValidationError(f"Недопустимый код валюты: {e}") from e
+            
         self.currency_code = currency_code
-        self._balance = balance
+        if not isinstance(balance, Decimal):
+            balance = Decimal(balance)
+        self._balance = balance # Изначально присваиваем, setter выполнит валидацию
 
     @property
-    def balance(self) -> float:
+    def balance(self) -> Decimal:
         return self._balance
 
     @balance.setter
-    def balance(self, amount: float):
-        if not isinstance(amount, (int, float)):
-            raise ValidationError("Баланс должен быть числом.")
-        if amount < 0:
+    def balance(self, value: Decimal):
+        if not isinstance(value, Decimal):
+            raise ValidationError("Баланс должен быть числом Decimal.")
+        if value < 0:
             raise ValidationError("Баланс не может быть отрицательным.")
-        self._balance = float(amount)
+        self._balance = value
 
-    def deposit(self, amount: float):
-        if amount <= 0:
-            raise ValidationError("Сумма пополнения должна быть положительной.")
-        self._balance += amount
+    def deposit(self, amount: Decimal):
+        """Пополнение баланса."""
+        if not isinstance(amount, Decimal) or amount <= 0:
+            raise ValidationError("Сумма пополнения должна быть положительным числом Decimal.")
+        self.balance += amount
 
-    def withdraw(self, amount: float):
-        if amount <= 0:
-            raise ValidationError("Сумма снятия должна быть положительной.")
-        if amount > self._balance:
-            raise ValidationError(f"Недостаточно средств. Доступно: {self._balance}, Требуется: {amount}")
-        self._balance -= amount
+    def withdraw(self, amount: Decimal):
+        """Снятие средств (если баланс позволяет)."""
+        if not isinstance(amount, Decimal) or amount <= 0:
+            raise ValidationError("Сумма снятия должна быть положительным числом Decimal.")
+        if amount > self.balance:
+            raise InsufficientFundsError(
+                message=f"Недостаточно средств: доступно {self.balance} {self.currency_code}, требуется {amount} {self.currency_code}",
+                available_amount=self.balance,
+                required_amount=amount,
+                currency_code=self.currency_code
+            )
+        self.balance -= amount
 
-    def get_balance_info(self) -> dict:
-        return {
-            "currency_code": self.currency_code,
-            "balance": self._balance
-        }
+    def get_balance_info(self) -> str:
+        return f"Баланс: {self.balance} {self.currency_code}"
 
 
+# --- Portfolio Class ---
 class Portfolio:
+    """Управление всеми кошельками одного пользователя."""
     def __init__(self, user_id: int, wallets: dict[str, Wallet] = None):
         self._user_id = user_id
         self._wallets = wallets if wallets is not None else {}
@@ -113,26 +229,81 @@ class Portfolio:
 
     @property
     def wallets(self) -> dict[str, Wallet]:
-        return self._wallets.copy()  # Return a copy to prevent direct modification
+        return self._wallets.copy()
 
     def add_currency(self, currency_code: str):
-        if currency_code in self._wallets:
-            raise ValidationError(f"Валюта {currency_code} уже есть в портфеле.")
-        self._wallets[currency_code] = Wallet(currency_code)
+        """Добавляет новый кошелёк в портфель (если его ещё нет)."""
+        currency_code = currency_code.upper()
+        try:
+            get_currency(currency_code) # Проверка существования валюты
+        except CurrencyNotFoundError as e:
+            raise ValidationError(f"Недопустимый код валюты: {e}") from e
 
-    def get_total_value(self, base_currency='USD', exchange_rates=None):
-        total_value = 0.0
+        if currency_code in self._wallets:
+            raise ValidationError(f"Кошелек для валюты '{currency_code}' уже существует.")
+        
+        self._wallets[currency_code] = Wallet(currency_code=currency_code)
+
+    def get_total_value(self, base_currency='USD', exchange_rates=None) -> Decimal:
+        """Возвращает общую стоимость всех валют пользователя в указанной базовой валюте."""
+        total_value = Decimal('0.0')
         if exchange_rates is None:
-            exchange_rates = {}
+            exchange_rates = {} # Заглушка
+        
+        try:
+            get_currency(base_currency)
+        except CurrencyNotFoundError as e:
+            raise ValidationError(f"Неизвестная базовая валюта '{base_currency}'.") from e
+
         for currency_code, wallet in self._wallets.items():
+            balance = wallet.balance
             if currency_code == base_currency:
-                total_value += wallet.balance
-            elif f"{currency_code}_{base_currency}" in exchange_rates:
-                rate = exchange_rates[f"{currency_code}_{base_currency}"]
-                total_value += wallet.balance * rate
+                total_value += balance
+            else:
+                rate_key = f"{currency_code}_{base_currency}"
+                
+                # Важно: Проверяем наличие курса в 'rates' и сам курс
+                rate_info = exchange_rates.get('rates', {}).get(rate_key)
+
+                # Важно: Если rate_info нет, попробуем перевернуть пару валют (base->currency)
+                if not rate_info and base_currency != 'USD':
+                    rate_key_reversed = f"{base_currency}_{currency_code}"
+                    rate_info = exchange_rates.get('rates', {}).get(rate_key_reversed)
+                    if rate_info and 'rate' in rate_info:
+                        try:
+                            rate_value = Decimal('1.0') / Decimal(rate_info['rate'])
+                            total_value += balance * rate_value
+                            continue # <--- Важно: переходим к следующей валюте
+                        except (ValueError, TypeError, ZeroDivisionError):
+                            pass # Обработка ошибки (лог или что-то еще)
+                if rate_info and 'rate' in rate_info:
+                    try:
+                        rate_value = Decimal(rate_info['rate'])
+                        total_value += balance * rate_value
+                    except (ValueError, TypeError):
+                        # Игнорируем ошибки конвертации для отдельной валюты
+                        pass 
         return total_value
 
     def get_wallet(self, currency_code: str) -> Wallet:
+        """Возвращает объект Wallet по коду валюты."""
+        currency_code = currency_code.upper()
         if currency_code not in self._wallets:
-            raise ValidationError(f"Валюта {currency_code} не найдена в портфеле.")
+            raise CurrencyNotFoundError(f"Кошелек для валюты '{currency_code}' не найден в портфеле.", code=currency_code)
         return self._wallets[currency_code]
+# --- Реестр валют (фабрика) ---
+_currency_registry = {
+    "USD": FiatCurrency(name="US Dollar", code="USD", issuing_country="United States"),
+    "EUR": FiatCurrency(name="Euro", code="EUR", issuing_country="Eurozone"),
+    "RUB": FiatCurrency(name="Russian Ruble", code="RUB", issuing_country="Russian Federation"),
+    "BTC": CryptoCurrency(name="Bitcoin", code="BTC", algorithm="SHA-256", market_cap=Decimal("1120000000000")),
+    "ETH": CryptoCurrency(name="Ethereum", code="ETH", algorithm="Ethash", market_cap=Decimal("450000000000")),
+}
+
+def get_currency(code: str) -> Currency:
+    """Возвращает объект Currency по его коду."""
+    code = code.upper()
+    currency = _currency_registry.get(code)
+    if not currency:
+        raise CurrencyNotFoundError(f"Неизвестная валюта '{code}'", code=code)
+    return currency

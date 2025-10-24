@@ -5,20 +5,16 @@ from datetime import datetime, timedelta
 from decimal import Decimal
 
 from .utils import data_manager, rate_manager
-from .models import ValidationError  # Добавлен импорт класса ValidationError
-
-# --- Исключения (для CLI) ---
-class UserNotFoundError(Exception): pass
-class InvalidCredentialsError(Exception): pass
-class InsufficientFundsError(Exception):
-    def __init__(self, available, required, currency):
-        self.available = available
-        self.required = required
-        self.currency = currency
-        super().__init__(f"Недостаточно средств")
-
-class CurrencyNotFoundError(Exception): pass
-class ApiRequestError(Exception): pass
+from .exceptions import (
+    ValidationError,
+    UserNotFoundError,
+    InvalidCredentialsError,
+    InsufficientFundsError,
+    CurrencyNotFoundError,
+    ApiRequestError
+)
+from .models import get_currency # Импорт get_currency
+#from .currencies import get_currency # Импорт get_currency
 
 BASE_CURRENCY = "USD"
 RATE_TTL_SECONDS = 300
@@ -49,7 +45,6 @@ def register_user(username, password):
     users.append(new_user)
     data_manager.save_users(users)
 
-    # Создаем портфель и сразу добавляем стартовый USD
     initial_usd_balance = Decimal("1000.00")
     new_portfolio = {"user_id": user_id, "wallets": {BASE_CURRENCY: {'balance': str(initial_usd_balance)}}}
 
@@ -72,6 +67,11 @@ def login_user(username, password):
     return users['user_id']
 
 def show_portfolio(user_id, base_currency=BASE_CURRENCY):
+    try:
+        get_currency(base_currency)
+    except CurrencyNotFoundError as e:
+        raise ValidationError(f"Неизвестная базовая валюта '{base_currency}'.") from e
+
     portfolio_data = data_manager.get_portfolio_by_user_id(user_id)
     rates_cache = rate_manager.get_rates()
 
@@ -85,14 +85,16 @@ def show_portfolio(user_id, base_currency=BASE_CURRENCY):
     if wallets:
         for curr, data in wallets.items():
             balance = data.get('balance', 0)
-            if not isinstance(balance, Decimal):  # Преобразуем в Decimal, только если это не Decimal
-                balance = Decimal(str(balance)).quantize(Decimal("0.0000"))
+            if not isinstance(balance, Decimal):
+                balance = Decimal(str(balance))
             
             value = Decimal('0.0')
             if curr == base_currency:
                 value = balance
             else:
                 rate_key = f"{curr}_{base_currency}"
+                
+                # Проверяем наличие 'rates' и самого курса
                 if 'rates' in rates_cache and rate_key in rates_cache['rates'] and 'rate' in rates_cache['rates'][rate_key]:
                     try:
                         rate_value = Decimal(rates_cache['rates'][rate_key]['rate'])
@@ -100,6 +102,7 @@ def show_portfolio(user_id, base_currency=BASE_CURRENCY):
                     except (ValueError, TypeError):
                         value = Decimal('0.0')
                 else:
+                    # Если нужного курса нет (например, BTC_EUR), оставляем value = 0.0
                     value = Decimal('0.0')
             
             total_value += value
@@ -113,15 +116,19 @@ def buy_currency(user_id, currency, amount):
     if amount <= 0:
         raise ValidationError("'amount' должен быть положительным числом")
 
+    try:
+        get_currency(currency)
+    except CurrencyNotFoundError as e:
+        raise e
+
     portfolio_raw = data_manager.get_portfolio_by_user_id(user_id)
     if not portfolio_raw: raise UserNotFoundError("Портфель не найден.")
 
     rates = rate_manager.get_rates()
     rate_key = f"{currency}_{BASE_CURRENCY}"
 
-    # Проверяем наличие ключа 'rates'
     if 'rates' not in rates or rate_key not in rates['rates'] or 'rate' not in rates['rates'][rate_key]:
-        raise ApiRequestError(f"Курс {currency}→USD недоступен.")
+        raise ApiRequestError(f"Курс {currency}→{BASE_CURRENCY} недоступен.")
 
     rate = Decimal(rates['rates'][rate_key]['rate'])
     amount_dec = Decimal(str(amount))
@@ -131,42 +138,37 @@ def buy_currency(user_id, currency, amount):
         portfolio_raw['wallets'][BASE_CURRENCY] = {'balance': '0.0'}
 
     usd_balance = portfolio_raw['wallets'][BASE_CURRENCY]['balance']
-
-    #Преобразуем float/int/str в Decimal
-    if isinstance(usd_balance, (int, float, str)):
-        usd_balance = Decimal(str(usd_balance)).quantize(Decimal("0.0000"))
-    else:
-        usd_balance = Decimal('0.0')
+    if not isinstance(usd_balance, Decimal):
+        usd_balance = Decimal(str(usd_balance))
 
     if usd_balance < cost:
-        raise InsufficientFundsError(usd_balance, cost, BASE_CURRENCY)
+        raise InsufficientFundsError(
+            message=f"Недостаточно {BASE_CURRENCY} для совершения покупки.",
+            available_amount=usd_balance,
+            required_amount=cost,
+            currency_code=BASE_CURRENCY
+        )
 
-    # Выполняем операцию
-    portfolio_raw['wallets'][BASE_CURRENCY]['balance'] = str((usd_balance - cost).quantize(Decimal("0.0000")))
+    portfolio_raw['wallets'][BASE_CURRENCY]['balance'] = str(usd_balance - cost)
 
     if currency not in portfolio_raw['wallets']:
         portfolio_raw['wallets'][currency] = {'balance': '0.0'}
 
     currency_balance = portfolio_raw['wallets'][currency]['balance']
-    #Преобразуем float/int/str в Decimal
-    if isinstance(currency_balance, (int, float, str)):
-        currency_balance = Decimal(str(currency_balance)).quantize(Decimal("0.0000"))
-    else:
-        currency_balance = Decimal('0.0')
+    if not isinstance(currency_balance, Decimal):
+        currency_balance = Decimal(str(currency_balance))
 
-    portfolio_raw['wallets'][currency]['balance'] = str((currency_balance + amount_dec).quantize(Decimal("0.0000"))) #Добавил quantize
+    portfolio_raw['wallets'][currency]['balance'] = str(currency_balance + amount_dec)
     
-    # Находим индекс портфеля пользователя
     portfolios = data_manager.get_all_portfolios()
-    for i, portfolio in enumerate(portfolios):
-        if portfolio['user_id'] == user_id:
+    for i, p in enumerate(portfolios):
+        if p['user_id'] == user_id:
             portfolio = portfolio_raw
-            portfolios[i] = portfolio 
+            portfolios[i] = portfolio
             break
-    
-    data_manager.save_portfolios(portfolios) # Save updated portfolios list
+    data_manager.save_portfolios(portfolios)
 
-    return f"Покупка выполнена: {amount_dec:.4f} {currency} по курсу {rate:.2f} USD/{currency}"
+    return f"Покупка выполнена: {amount_dec:.4f} {currency} по курсу {rate:.2f} {BASE_CURRENCY}/{currency}"
 
 def sell_currency(user_id, currency, amount):
     currency = currency.upper()
@@ -174,81 +176,94 @@ def sell_currency(user_id, currency, amount):
     if amount <= 0:
         raise ValidationError("'amount' должен быть положительным числом")
 
+    try:
+        get_currency(currency)
+    except CurrencyNotFoundError as e:
+        raise e
+
     portfolio_raw = data_manager.get_portfolio_by_user_id(user_id)
     if not portfolio_raw: raise UserNotFoundError("Портфель не найден.")
 
     if currency not in portfolio_raw['wallets']:
-        raise CurrencyNotFoundError()
+        raise CurrencyNotFoundError(f"У вас нет кошелька '{currency}'. Добавьте валюту: она создаётся автоматически при первой покупке.", code=currency)
     
     currency_balance = portfolio_raw['wallets'][currency]['balance']
-    if isinstance(currency_balance, (int, float, str)):
-        currency_balance = Decimal(str(currency_balance)).quantize(Decimal("0.0000"))
-    else:
-        currency_balance = Decimal('0.0')
+    if not isinstance(currency_balance, Decimal):
+        currency_balance = Decimal(str(currency_balance))
 
     if currency_balance < amount:
-        raise InsufficientFundsError(currency_balance, amount, currency)
+        raise InsufficientFundsError(
+            message=f"Недостаточно средств: доступно {currency_balance:.4f} {currency}, требуется {amount:.4f} {currency}",
+            available_amount=currency_balance,
+            required_amount=amount,
+            currency_code=currency
+        )
 
     rates = rate_manager.get_rates()
     rate_key = f"{currency}_{BASE_CURRENCY}"
 
-    # Проверяем наличие ключа 'rates'
     if 'rates' not in rates or rate_key not in rates['rates'] or 'rate' not in rates['rates'][rate_key]:
-        raise ApiRequestError(f"Курс {currency}→USD недоступен.")
+        raise ApiRequestError(f"Курс {currency}→{BASE_CURRENCY} недоступен.")
 
     rate = Decimal(rates['rates'][rate_key]['rate'])
     amount_dec = Decimal(str(amount))
     revenue = amount_dec * rate
 
-    # Выполняем операцию
-    portfolio_raw['wallets'][currency]['balance'] = str((currency_balance - amount_dec).quantize(Decimal("0.0000")))
+    portfolio_raw['wallets'][currency]['balance'] = str(currency_balance - amount_dec)
 
     if BASE_CURRENCY not in portfolio_raw['wallets']:
         portfolio_raw['wallets'][BASE_CURRENCY] = {'balance': '0.0'}
 
     usd_balance = portfolio_raw['wallets'][BASE_CURRENCY]['balance']
-    if isinstance(usd_balance, (int, float, str)):
-        usd_balance = Decimal(str(usd_balance)).quantize(Decimal("0.0000"))
-    else:
-        usd_balance = Decimal('0.0')
+    if not isinstance(usd_balance, Decimal):
+        usd_balance = Decimal(str(usd_balance))
 
-    portfolio_raw['wallets'][BASE_CURRENCY]['balance'] = str((usd_balance + revenue).quantize(Decimal("0.0000")))
+    portfolio_raw['wallets'][BASE_CURRENCY]['balance'] = str(usd_balance + revenue)
 
-     # Находим индекс портфеля пользователя
     portfolios = data_manager.get_all_portfolios()
-    for i, portfolio in enumerate(portfolios):
-        if portfolio['user_id'] == user_id:
+    for i, p in enumerate(portfolios):
+        if p['user_id'] == user_id:
             portfolio = portfolio_raw
-            portfolios[i] = portfolio 
+            portfolios[i] = portfolio
             break
 
     data_manager.save_portfolios(portfolios)
 
-    return f"Продажа выполнена: {amount_dec:.4f} {currency} по курсу {rate:.2f} USD/{currency}"
+    return f"Продажа выполнена: {amount_dec:.4f} {currency} по курсу {rate:.2f} {BASE_CURRENCY}/{currency}"
 
 def get_rate(from_currency, to_currency):
     from_currency = from_currency.upper()
     to_currency = to_currency.upper()
-    rates = rate_manager.get_rates()
-    rate_key = f"{from_currency}_{to_currency}"
-
-    rate_data = rates.get(rate_key)
-
-    if rate_data:
-        updated_at = rate_data.get('updated_at')
-        if updated_at:
-            updated_at_dt = datetime.fromisoformat(updated_at)
-            if (datetime.utcnow() - updated_at_dt).total_seconds() <= RATE_TTL_SECONDS:
-                rate_value = Decimal(rate_data['rate']) if isinstance(rate_data['rate'], (str, Decimal)) else rate_data['rate']
-                return f"Курс {from_currency}→{to_currency}: {rate_value:.8f} (обновлено: {updated_at[:19]})"
 
     try:
-        new_rates = rate_manager.refresh_rates()
-        rate_key = f"{from_currency}_{to_currency}"
-        if rate_key in new_rates and 'rate' in new_rates[rate_key]:
-            rate_value = Decimal(new_rates[rate_key]['rate'])
-            return f"Курс {from_currency}→{to_currency}: {rate_value:.8f} (обновлено: {new_rates[rate_key]['updated_at'][:19]})"
+        get_currency(from_currency)
+        get_currency(to_currency)
+    except CurrencyNotFoundError as e:
+        raise e
+
+    rates_data_from_manager = data_manager.get_rates()
+
+    rate_key = f"{from_currency}_{to_currency}"
+
+    rate_info = None
+    if 'rates' in rates_data_from_manager and rate_key in rates_data_from_manager['rates']:
+        rate_info = rates_data_from_manager['rates'][rate_key]
+
+    if rate_info:
+        updated_at_str = rate_info.get('updated_at')
+        if updated_at_str:
+            updated_at_dt = datetime.fromisoformat(updated_at_str)
+            if (datetime.utcnow() - updated_at_dt).total_seconds() <= RATE_TTL_SECONDS:
+                rate_value = Decimal(rate_info['rate'])
+                return f"Курс {from_currency}→{to_currency}: {rate_value:.8f} (обновлено: {updated_at_str[:19]})"
+
+    try:
+        new_rates_data = rate_manager.refresh_rates()
+        if 'rates' in new_rates_data and rate_key in new_rates_data['rates']:
+            rate_info = new_rates_data['rates'][rate_key]
+            rate_value = Decimal(rate_info['rate'])
+            return f"Курс {from_currency}→{to_currency}: {rate_value:.8f} (обновлено: {rate_info['updated_at'][:19]})"
         else:
-            raise ApiRequestError(f"Курс {from_currency}→{to_currency} по-прежнему недоступен после обновления.")
+            raise ApiRequestError(f"Курс {from_currency}→{to_currency} по-прежнему недоступен после обновления.", reason="Курс не найден в Parser Service.")
     except ApiRequestError as e:
-        raise ApiRequestError(f"Данные о курсе недоступны: {e}")
+        raise ApiRequestError(f"Данные о курсе недоступны: {e.reason if e.reason else 'неизвестная причина'}")
