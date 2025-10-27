@@ -2,96 +2,16 @@
 import json
 import os
 from pathlib import Path
-from datetime import datetime, timedelta
+from datetime import datetime
 from decimal import Decimal
 
-from .currencies import CurrencyNotFoundError # Импорт для возможных исключений
-#from .models import get_currency # Не нужно здесь
+from .exceptions import CurrencyNotFoundError # Импорт для возможных исключений
+from ..infra.database import database_manager
 
-BASE_DIR = Path(__file__).resolve().parent.parent.parent
-
-USERS_FILE = os.path.join(BASE_DIR, "data", "users.json")
-PORTFOLIOS_FILE = os.path.join(BASE_DIR, "data", "portfolios.json")
-RATES_FILE = os.path.join(BASE_DIR, "data", "rates.json")
-
-class DataManager:
-    def __init__(self):
-        self.users_file = USERS_FILE
-        self.portfolios_file = PORTFOLIOS_FILE
-        self.rates_file = RATES_FILE
-
-    def _load_json(self, file_path):
-        try:
-            with open(file_path, "r", encoding="utf-8") as f:
-                content = f.read()
-                if content:
-                    return json.loads(content)
-                else:
-                    return {} # Возвращаем пустой словарь, если файл пустой
-        except FileNotFoundError:
-            return {} # Возвращаем пустой словарь, если файл не найден
-        except json.JSONDecodeError:
-            return {} # Возвращаем пустой словарь при ошибке парсинга
-
-    def _save_json(self, data, file_path):
-        def default(obj):
-            if isinstance(obj, Decimal):
-                return str(obj)
-            raise TypeError
-            
-        with open(file_path, "w", encoding="utf-8") as f:
-            json.dump(data, f, indent=4, default=default)
-
-    def get_all_users(self):
-        return self.load_or_default(self.users_file, [])
-
-    def save_users(self, users):
-        self._save_json(users, self.users_file)
-
-    def get_user_by_username(self, username):
-        users = self.get_all_users()
-        for user in users:
-            if user.get('username') == username:
-                return user
-        return None
-
-    def get_all_portfolios(self):
-        return self.load_or_default(self.portfolios_file, [])
-
-    def save_portfolios(self, portfolios):
-        self._save_json(portfolios, self.portfolios_file)
-
-    def get_portfolio_by_user_id(self, user_id):
-        portfolios = self.get_all_portfolios()
-        for portfolio in portfolios:
-            if portfolio.get('user_id') == user_id:
-                return portfolio
-        return None
-
-    def get_rates(self):
-        # Возвращаем rates, гарантируя, что это словарь, даже если файл пуст или ошибка
-        return self.load_or_default(self.rates_file, {"rates": {}, "last_refresh": None, "source": "Unknown"})
-
-    def save_rates(self, rates):
-        self._save_json(rates, self.rates_file)
-
-    def load_or_default(self, file_path, default_value):
-        try:
-            with open(file_path, "r", encoding="utf-8") as f:
-                content = f.read()
-                if content:
-                    return json.loads(content)
-                else:
-                    return default_value
-        except FileNotFoundError:
-            return default_value
-        except json.JSONDecodeError:
-            return default_value
-
+#BASE_DIR = Path(__file__).resolve().parent.parent.parent # теперь не нужно
 
 class RateManager:
-    def __init__(self, data_manager=DataManager()):
-        self.data_manager = data_manager
+    def __init__(self):
         # Заглушка курсов. В реальном приложении они будут подгружаться.
         self.mock_exchange_rates = {
             "USD_USD": Decimal("1.0000"),
@@ -107,22 +27,22 @@ class RateManager:
         self.rate_ttl_seconds = 300 # Время жизни кеша в секундах
 
     def get_rates(self):
-        rates_data = self.data_manager.get_rates()
+        rates_data = database_manager.get_rates()
         
         # Если данных нет или они устарели, обновляем
         last_refresh_str = rates_data.get("last_refresh")
         if not last_refresh_str:
             self.refresh_rates()
-            rates_data = self.data_manager.get_rates()
+            rates_data = database_manager.get_rates()
         else:
             try:
                 last_refresh = datetime.fromisoformat(last_refresh_str)
                 if (datetime.utcnow() - last_refresh).total_seconds() > self.rate_ttl_seconds:
                     self.refresh_rates()
-                    rates_data = self.data_manager.get_rates()
+                    rates_data = database_manager.get_rates()
             except ValueError: # Если формат даты некорректен
                 self.refresh_rates()
-                rates_data = self.data_manager.get_rates()
+                rates_data = database_manager.get_rates()
                 
         return rates_data
 
@@ -141,8 +61,11 @@ class RateManager:
             # (Это упрощение, в реальном парсере нужно было бы проверять наличие валют)
             rates_data["rates"][pair] = {"rate": str(rate), "updated_at": rates_data["last_refresh"]}
 
-        self.data_manager.save_rates(rates_data)
+        database_manager.save_rates(rates_data)
         return rates_data
 
-data_manager = DataManager()
-rate_manager = RateManager(data_manager)
+#data_manager = DataManager() # Убрали создание экземпляра DataManager
+rate_manager = RateManager() # Передаем в RateManager экземпляр Singleton
+
+# Создадим экземпляр RateManager при старте приложения:
+rate_manager = RateManager()

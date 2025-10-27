@@ -4,7 +4,7 @@ import secrets
 from datetime import datetime
 from decimal import Decimal
 
-from .utils import data_manager, rate_manager
+#from .utils import data_manager, rate_manager
 from .exceptions import (
     ValidationError,
     UserNotFoundError,
@@ -13,9 +13,11 @@ from .exceptions import (
     CurrencyNotFoundError,
     ApiRequestError
 )
-from .models import get_currency, Wallet # Импорт get_currency
+from .models import get_currency # Импорт get_currency
 from ..decorators import log_action
 from ..infra.settings import settings_loader
+from ..infra.database import database_manager
+from .utils import rate_manager
 
 #from .currencies import get_currency # Импорт get_currency
 
@@ -29,10 +31,10 @@ def register_user(username, password):
     if not username or not password: raise ValidationError("Имя пользователя и пароль обязательны.")
     if len(password) < 4: raise ValidationError("Пароль должен быть не короче 4 символов.")
 
-    if data_manager.get_user_by_username(username):
+    if database_manager.get_user_by_username(username):
         raise UserNotFoundError(f"Имя пользователя '{username}' уже занято.")
 
-    user_id = generate_user_id(data_manager.get_all_users())
+    user_id = generate_user_id(database_manager.get_all_users())
     salt = secrets.token_hex(8)
     hashed_password = hashlib.sha256((password + salt).encode()).hexdigest()
     registration_date = datetime.utcnow().isoformat()
@@ -44,21 +46,22 @@ def register_user(username, password):
         "salt": salt,
         "registration_date": registration_date
     }
-    users = data_manager.get_all_users()
+    users = database_manager.get_all_users()
     users.append(new_user)
-    data_manager.save_users(users)
+    database_manager.save_users(users)
 
     initial_usd_balance = Decimal("1000.00")
     new_portfolio = {"user_id": user_id, "wallets": {BASE_CURRENCY: {'balance': str(initial_usd_balance)}}}
 
-    portfolios = data_manager.get_all_portfolios()
+    portfolios = database_manager.get_all_portfolios()
     portfolios.append(new_portfolio)
-    data_manager.save_portfolios(portfolios)
+    database_manager.save_portfolios(portfolios)
 
     return user_id
 
+@log_action()
 def login_user(username, password):
-    users = data_manager.get_user_by_username(username)
+    users = database_manager.get_user_by_username(username)
     if not users:
         raise UserNotFoundError(f"Пользователь '{username}' не найден")
 
@@ -75,16 +78,16 @@ def show_portfolio(user_id, base_currency=BASE_CURRENCY):
     except CurrencyNotFoundError as e:
         raise ValidationError(f"Неизвестная базовая валюта '{base_currency}'.") from e
 
-    portfolio_data = data_manager.get_portfolio_by_user_id(user_id)
+    portfolio_raw = database_manager.get_portfolio_by_user_id(user_id)
     rates_cache = rate_manager.get_rates()
 
-    if not portfolio_data:
+    if not portfolio_raw:
         raise UserNotFoundError(f"Портфель для пользователя с ID {user_id} не найден.")
     
     total_value = Decimal('0.0')
     portfolio_info = {}
 
-    wallets = portfolio_data.get('wallets', {})
+    wallets = portfolio_raw.get('wallets', {})
     if wallets:
         for curr, data in wallets.items():
             balance = data.get('balance', 0)
@@ -125,7 +128,7 @@ def buy_currency(user_id, currency, amount):
     except CurrencyNotFoundError as e:
         raise e
 
-    portfolio_raw = data_manager.get_portfolio_by_user_id(user_id)
+    portfolio_raw = database_manager.get_portfolio_by_user_id(user_id)
     if not portfolio_raw: raise UserNotFoundError("Портфель не найден.")
 
     rates = rate_manager.get_rates()
@@ -159,13 +162,13 @@ def buy_currency(user_id, currency, amount):
     currency_balance = Decimal(str(portfolio_raw['wallets'][currency]['balance']))
     portfolio_raw['wallets'][currency]['balance'] = str(currency_balance + amount_dec)
     
-    portfolios = data_manager.get_all_portfolios()
+    portfolios = database_manager.get_all_portfolios()
     for i, p in enumerate(portfolios):
         if p['user_id'] == user_id:
             portfolio = portfolio_raw
             portfolios[i] = portfolio
             break
-    data_manager.save_portfolios(portfolios)
+    database_manager.save_portfolios(portfolios)
 
     return f"Покупка выполнена: {amount_dec:.4f} {currency} по курсу {rate:.2f} {BASE_CURRENCY}/{currency}"
 
@@ -181,7 +184,7 @@ def sell_currency(user_id, currency, amount):
     except CurrencyNotFoundError as e:
         raise e
 
-    portfolio_raw = data_manager.get_portfolio_by_user_id(user_id)
+    portfolio_raw = database_manager.get_portfolio_by_user_id(user_id)
     if not portfolio_raw: raise UserNotFoundError("Портфель не найден.")
 
     if currency not in portfolio_raw['wallets']:
@@ -216,14 +219,14 @@ def sell_currency(user_id, currency, amount):
 
     portfolio_raw['wallets'][BASE_CURRENCY]['balance'] = str(usd_balance + revenue)
 
-    portfolios = data_manager.get_all_portfolios()
+    portfolios = database_manager.get_all_portfolios()
     for i, p in enumerate(portfolios):
         if p['user_id'] == user_id:
             portfolio = portfolio_raw
             portfolios[i] = portfolio
             break
 
-    data_manager.save_portfolios(portfolios)
+    database_manager.save_portfolios(portfolios)
 
     return f"Продажа выполнена: {amount_dec:.4f} {currency} по курсу {rate:.2f} {BASE_CURRENCY}/{currency}"
 
@@ -237,7 +240,7 @@ def get_rate(from_currency, to_currency):
     except CurrencyNotFoundError as e:
         raise e
 
-    rates_data_from_manager = data_manager.get_rates()
+    rates_data_from_manager = rate_manager.get_rates()
 
     rate_key = f"{from_currency}_{to_currency}"
 
