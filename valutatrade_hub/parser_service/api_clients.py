@@ -29,7 +29,7 @@ class CoinGeckoClient(BaseApiClient):
                 pair_key = f"{code}_{config.BASE_FIAT_CURRENCY}"
                 if coin_id in data and config.BASE_FIAT_CURRENCY.lower() in data[coin_id]:
                     rate = Decimal(str(data[coin_id][config.BASE_FIAT_CURRENCY.lower()]))
-                    standardized_rates[pair_key] = (rate, "CoinGecko")
+                    standardized_rates[pair_key] = rate
 
             return standardized_rates
 
@@ -63,7 +63,7 @@ class ExchangeRateApiClient(BaseApiClient):
                 if fiat_code in config.FIAT_CURRENCIES:
                     pair_key = f"{fiat_code}_USD" 
                     rate = Decimal(str(rate_str))
-                    standardized_rates[pair_key] = (rate, "ExchangeRate-API")
+                    standardized_rates[pair_key] = rate
 
             return standardized_rates
 

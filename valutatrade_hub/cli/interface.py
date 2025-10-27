@@ -79,7 +79,7 @@ class CLIInterface:
             print(f"Пользователь '{args.username}' зарегистрирован (id={user_id}). Войдите: login --username {args.username} --password ****")
         except (ValidationError, UserNotFoundError) as e:
             print(f"Ошибка: {e}")
-
+    
     def handle_login(self, args):
         try:
             user_id = usecases.login_user(args.username, args.password)

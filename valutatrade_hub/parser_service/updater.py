@@ -11,11 +11,11 @@ from .config import parser_config  # Corrected import
 
 logger = logging.getLogger('valutatrade_hub.parser_service')
 
-
 class RatesUpdater:
     def __init__(self):
         self.coingecko_client = CoinGeckoClient()
         self.exchangerate_client = ExchangeRateApiClient() # Fix the typo
+        self._SOURCE = "Combined"
 
     def run_update(self, source_filter: Optional[str] = None):
         all_rates: Dict[str, Decimal] = {}
@@ -40,6 +40,7 @@ class RatesUpdater:
             try:
                 cg_rates = self.coingecko_client.fetch_rates()
                 all_rates.update(cg_rates)
+                self._SOURCE = "coingecko"
                 msg = f"Fetching from CoinGecko... OK ({len(cg_rates)} rates)"
                 logger.info(msg, extra={**base_log_extra, "log_message": msg, "result": "OK"}) # Changed here
             except ApiRequestError as e:
@@ -51,6 +52,7 @@ class RatesUpdater:
             try:
                 er_rates = self.exchangerate_client.fetch_rates()
                 all_rates.update(er_rates)
+                self.SOURCE = "exchangerate"
                 msg = f"Fetching from ExchangeRate-API... OK ({len(er_rates)} rates)"
                 logger.info(msg, extra={**base_log_extra, "log_message": msg, "result": "OK"}) # Changed here
             except ApiRequestError as e:
@@ -60,7 +62,7 @@ class RatesUpdater:
         # 3. Save combined rates
         if all_rates:
             # Save to rates.json (snapshot)
-            updated_count = storage.save_current_rates(all_rates, source="Combined")
+            updated_count = storage.save_current_rates(all_rates, source=self._SOURCE)
 
             # Формирование ответа для CLI
             if updated_count > 0:

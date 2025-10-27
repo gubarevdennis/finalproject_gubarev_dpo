@@ -1,0 +1,148 @@
+{
+    "history": {
+        "BTCUSD_2025-10-27T13:29:32.678857": {
+            "id": "BTCUSD_2025-10-27T13:29:32.678857",
+            "from_currency": "BTC",
+            "to_currency": "USD",
+            "rate": "115132",
+            "timestamp": "2025-10-27T13:29:32.678857",
+            "source": "coingecko",
+            "meta": {}
+        },
+        "ETHUSD_2025-10-27T13:29:32.678857": {
+            "id": "ETHUSD_2025-10-27T13:29:32.678857",
+            "from_currency": "ETH",
+            "to_currency": "USD",
+            "rate": "4161.35",
+            "timestamp": "2025-10-27T13:29:32.678857",
+            "source": "coingecko",
+            "meta": {}
+        },
+        "SOLUSD_2025-10-27T13:29:32.678857": {
+            "id": "SOLUSD_2025-10-27T13:29:32.678857",
+            "from_currency": "SOL",
+            "to_currency": "USD",
+            "rate": "200.16",
+            "timestamp": "2025-10-27T13:29:32.678857",
+            "source": "coingecko",
+            "meta": {}
+        },
+        "AEDUSD_2025-10-27T13:29:32.678857": {
+            "id": "AEDUSD_2025-10-27T13:29:32.678857",
+            "from_currency": "AED",
+            "to_currency": "USD",
+            "rate": "3.6725",
+            "timestamp": "2025-10-27T13:29:32.678857",
+            "source": "coingecko",
+            "meta": {}
+        },
+        "EURUSD_2025-10-27T13:29:32.678857": {
+            "id": "EURUSD_2025-10-27T13:29:32.678857",
+            "from_currency": "EUR",
+            "to_currency": "USD",
+            "rate": "0.8599",
+            "timestamp": "2025-10-27T13:29:32.678857",
+            "source": "coingecko",
+            "meta": {}
+        },
+        "GBPUSD_2025-10-27T13:29:32.678857": {
+            "id": "GBPUSD_2025-10-27T13:29:32.678857",
+            "from_currency": "GBP",
+            "to_currency": "USD",
+            "rate": "0.7508",
+            "timestamp": "2025-10-27T13:29:32.678857",
+            "source": "coingecko",
+            "meta": {}
+        },
+        "JPYUSD_2025-10-27T13:29:32.678857": {
+            "id": "JPYUSD_2025-10-27T13:29:32.678857",
+            "from_currency": "JPY",
+            "to_currency": "USD",
+            "rate": "153.0001",
+            "timestamp": "2025-10-27T13:29:32.678857",
+            "source": "coingecko",
+            "meta": {}
+        },
+        "RUBUSD_2025-10-27T13:29:32.678857": {
+            "id": "RUBUSD_2025-10-27T13:29:32.678857",
+            "from_currency": "RUB",
+            "to_currency": "USD",
+            "rate": "80.5612",
+            "timestamp": "2025-10-27T13:29:32.678857",
+            "source": "coingecko",
+            "meta": {}
+        },
+        "BTCUSD_2025-10-27T13:29:40.866803": {
+            "id": "BTCUSD_2025-10-27T13:29:40.866803",
+            "from_currency": "BTC",
+            "to_currency": "USD",
+            "rate": "115132",
+            "timestamp": "2025-10-27T13:29:40.866803",
+            "source": "coingecko",
+            "meta": {}
+        },
+        "ETHUSD_2025-10-27T13:29:40.866803": {
+            "id": "ETHUSD_2025-10-27T13:29:40.866803",
+            "from_currency": "ETH",
+            "to_currency": "USD",
+            "rate": "4161.35",
+            "timestamp": "2025-10-27T13:29:40.866803",
+            "source": "coingecko",
+            "meta": {}
+        },
+        "SOLUSD_2025-10-27T13:29:40.866803": {
+            "id": "SOLUSD_2025-10-27T13:29:40.866803",
+            "from_currency": "SOL",
+            "to_currency": "USD",
+            "rate": "200.16",
+            "timestamp": "2025-10-27T13:29:40.866803",
+            "source": "coingecko",
+            "meta": {}
+        },
+        "AEDUSD_2025-10-27T13:29:47.477977": {
+            "id": "AEDUSD_2025-10-27T13:29:47.477977",
+            "from_currency": "AED",
+            "to_currency": "USD",
+            "rate": "3.6725",
+            "timestamp": "2025-10-27T13:29:47.477977",
+            "source": "coingecko",
+            "meta": {}
+        },
+        "EURUSD_2025-10-27T13:29:47.477977": {
+            "id": "EURUSD_2025-10-27T13:29:47.477977",
+            "from_currency": "EUR",
+            "to_currency": "USD",
+            "rate": "0.8599",
+            "timestamp": "2025-10-27T13:29:47.477977",
+            "source": "coingecko",
+            "meta": {}
+        },
+        "GBPUSD_2025-10-27T13:29:47.477977": {
+            "id": "GBPUSD_2025-10-27T13:29:47.477977",
+            "from_currency": "GBP",
+            "to_currency": "USD",
+            "rate": "0.7508",
+            "timestamp": "2025-10-27T13:29:47.477977",
+            "source": "coingecko",
+            "meta": {}
+        },
+        "JPYUSD_2025-10-27T13:29:47.477977": {
+            "id": "JPYUSD_2025-10-27T13:29:47.477977",
+            "from_currency": "JPY",
+            "to_currency": "USD",
+            "rate": "153.0001",
+            "timestamp": "2025-10-27T13:29:47.477977",
+            "source": "coingecko",
+            "meta": {}
+        },
+        "RUBUSD_2025-10-27T13:29:47.477977": {
+            "id": "RUBUSD_2025-10-27T13:29:47.477977",
+            "from_currency": "RUB",
+            "to_currency": "USD",
+            "rate": "80.5612",
+            "timestamp": "2025-10-27T13:29:47.477977",
+            "source": "coingecko",
+            "meta": {}
+        }
+    }
+}

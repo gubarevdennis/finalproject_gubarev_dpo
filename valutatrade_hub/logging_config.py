@@ -5,10 +5,9 @@ import os
 from pathlib import Path
 from datetime import datetime
 
-BASE_DIR = Path(__file__).resolve().parent.parent.parent
+BASE_DIR = Path(__file__).resolve().parent.parent
 LOGS_DIR = os.path.join(BASE_DIR, "logs")
 os.makedirs(LOGS_DIR, exist_ok=True)  # Ensure the logs directory exists
-
 
 def configure_logging():
     """Configures logging for the application."""

@@ -9,6 +9,7 @@ from ..infra.database import database_manager  # Используем Singleton 
 
 class RateStorage:
     def save_current_rates(self, rates_map: Dict[str, Decimal], source: str):
+        # print(rates_map)
         """
         Обновляет rates.json (снимок) и добавляет запись в exchange_rates.json (история).
         """
