@@ -1,4 +1,4 @@
-# valutatrade_hub/cli/interface.py
+# valuatrade_hub/cli/interface.py
 import argparse
 import sys
 from prettytable import PrettyTable
@@ -14,6 +14,7 @@ from ..core.exceptions import (
     CurrencyNotFoundError,
     ApiRequestError
 )
+from ..logging_config import configure_logging  # Import configure_logging
 
 class CLIInterface:
     def __init__(self):
@@ -158,7 +159,12 @@ class CLIInterface:
             print(f"Курс {args.from_currency.upper()}→{args.to_currency.upper()} недоступен. Повторите попытку позже.")
 
 
+# valuatrade_hub/cli/interface.py (Продолжение)
+# ... (весь код до этого места был корректным)
+
     def run(self):
+        configure_logging() # Configure logging at the start
+
         # ... (логика интерактивного режима) ...
         if len(sys.argv) == 1:
             print("--- ValutaTrade Hub CLI (Интерактивный режим) ---")

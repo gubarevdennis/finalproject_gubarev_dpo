@@ -3,7 +3,7 @@ from decimal import Decimal
 import re
 
 from .exceptions import InsufficientFundsError, ValidationError, CurrencyNotFoundError
-from .currencies import get_currency # <--- Импорт get_currency
+#from .currencies import get_currency # <--- Импорт get_currency
 
 class Currency: # ... (код класса Currency без изменений) ...
     """Абстрактный базовый класс для всех валют."""

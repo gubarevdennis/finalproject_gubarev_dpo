@@ -1,7 +1,7 @@
 # valutatrade_hub/core/usecases.py
 import hashlib
 import secrets
-from datetime import datetime, timedelta
+from datetime import datetime
 from decimal import Decimal
 
 from .utils import data_manager, rate_manager
@@ -13,11 +13,14 @@ from .exceptions import (
     CurrencyNotFoundError,
     ApiRequestError
 )
-from .models import get_currency # Импорт get_currency
+from .models import get_currency, Wallet # Импорт get_currency
+from ..decorators import log_action
+from ..infra.settings import settings_loader
+
 #from .currencies import get_currency # Импорт get_currency
 
-BASE_CURRENCY = "USD"
-RATE_TTL_SECONDS = 300
+BASE_CURRENCY = settings_loader.get('default_base_currency', 'USD') # Используем настройку
+RATE_TTL_SECONDS = settings_loader.get('rates_ttl_seconds', 300) # Используем настройку
 
 def generate_user_id(users):
     return max((user['user_id'] for user in users), default=0) + 1
@@ -110,6 +113,7 @@ def show_portfolio(user_id, base_currency=BASE_CURRENCY):
     
     return portfolio_info, total_value
 
+@log_action(verbose=True) # Добавляем декоратор
 def buy_currency(user_id, currency, amount):
     currency = currency.upper()
 
@@ -134,13 +138,14 @@ def buy_currency(user_id, currency, amount):
     amount_dec = Decimal(str(amount))
     cost = amount_dec * rate
 
+    # Автосоздание кошелька, если его нет
+    if currency not in portfolio_raw['wallets']:
+         portfolio_raw['wallets'][currency] = {'balance': '0.0'}
+   
     if BASE_CURRENCY not in portfolio_raw['wallets']:
         portfolio_raw['wallets'][BASE_CURRENCY] = {'balance': '0.0'}
 
-    usd_balance = portfolio_raw['wallets'][BASE_CURRENCY]['balance']
-    if not isinstance(usd_balance, Decimal):
-        usd_balance = Decimal(str(usd_balance))
-
+    usd_balance = Decimal(str(portfolio_raw['wallets'][BASE_CURRENCY]['balance']))
     if usd_balance < cost:
         raise InsufficientFundsError(
             message=f"Недостаточно {BASE_CURRENCY} для совершения покупки.",
@@ -150,14 +155,8 @@ def buy_currency(user_id, currency, amount):
         )
 
     portfolio_raw['wallets'][BASE_CURRENCY]['balance'] = str(usd_balance - cost)
-
-    if currency not in portfolio_raw['wallets']:
-        portfolio_raw['wallets'][currency] = {'balance': '0.0'}
-
-    currency_balance = portfolio_raw['wallets'][currency]['balance']
-    if not isinstance(currency_balance, Decimal):
-        currency_balance = Decimal(str(currency_balance))
-
+   
+    currency_balance = Decimal(str(portfolio_raw['wallets'][currency]['balance']))
     portfolio_raw['wallets'][currency]['balance'] = str(currency_balance + amount_dec)
     
     portfolios = data_manager.get_all_portfolios()
@@ -170,6 +169,7 @@ def buy_currency(user_id, currency, amount):
 
     return f"Покупка выполнена: {amount_dec:.4f} {currency} по курсу {rate:.2f} {BASE_CURRENCY}/{currency}"
 
+@log_action(verbose=True) # Добавляем декоратор
 def sell_currency(user_id, currency, amount):
     currency = currency.upper()
 
@@ -187,9 +187,7 @@ def sell_currency(user_id, currency, amount):
     if currency not in portfolio_raw['wallets']:
         raise CurrencyNotFoundError(f"У вас нет кошелька '{currency}'. Добавьте валюту: она создаётся автоматически при первой покупке.", code=currency)
     
-    currency_balance = portfolio_raw['wallets'][currency]['balance']
-    if not isinstance(currency_balance, Decimal):
-        currency_balance = Decimal(str(currency_balance))
+    currency_balance = Decimal(str(portfolio_raw['wallets'][currency]['balance']))
 
     if currency_balance < amount:
         raise InsufficientFundsError(
@@ -214,9 +212,7 @@ def sell_currency(user_id, currency, amount):
     if BASE_CURRENCY not in portfolio_raw['wallets']:
         portfolio_raw['wallets'][BASE_CURRENCY] = {'balance': '0.0'}
 
-    usd_balance = portfolio_raw['wallets'][BASE_CURRENCY]['balance']
-    if not isinstance(usd_balance, Decimal):
-        usd_balance = Decimal(str(usd_balance))
+    usd_balance = Decimal(str(portfolio_raw['wallets'][BASE_CURRENCY]['balance']))
 
     portfolio_raw['wallets'][BASE_CURRENCY]['balance'] = str(usd_balance + revenue)
 
