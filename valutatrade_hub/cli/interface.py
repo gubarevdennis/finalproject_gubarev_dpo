@@ -1,24 +1,24 @@
 # valutatrade_hub/cli/interface.py (продолжение)
 import argparse
 import sys
-from prettytable import PrettyTable
 from decimal import Decimal
 
+from prettytable import PrettyTable
+
 from ..core import usecases
+
 # Импортируем измененные исключения
 from ..core.exceptions import (
-    ValidationError,
-    UserNotFoundError,
-    InvalidCredentialsError,
-    InsufficientFundsError,
+    ApiRequestError,
     CurrencyNotFoundError,
-    ApiRequestError
+    InsufficientFundsError,
+    InvalidCredentialsError,
+    UserNotFoundError,
+    ValidationError,
 )
+from ..infra.database import database_manager  # Import the database manager
 from ..logging_config import configure_logging  # Import configure_logging
 from ..parser_service.updater import updater
-from ..parser_service.config import parser_config
-from ..core.models import get_currency  # Для show-rates
-from ..infra.database import database_manager  # Import the database manager
 
 
 class CLIInterface:
@@ -42,8 +42,10 @@ class CLIInterface:
         login_parser.add_argument("--password", required=True, help="Пароль")
         login_parser.set_defaults(func=self.handle_login)
 
-        show_portfolio_parser = self.subparsers.add_parser("show-portfolio", help="Показать портфель пользователя")
-        show_portfolio_parser.add_argument("--base", default="USD", help="Базовая валюта для расчета общей стоимости (по умолчанию USD)")
+        show_portfolio_parser = self.subparsers.add_parser("show-portfolio",
+                                                           help="Показать портфель пользователя")
+        show_portfolio_parser.add_argument("--base", default="USD",
+                                           help="Базовая валюта для расчета общей стоимости (по умолчанию USD)")
         show_portfolio_parser.set_defaults(func=self.handle_show_portfolio)
 
         buy_parser = self.subparsers.add_parser("buy", help="Купить валюту")
@@ -62,12 +64,15 @@ class CLIInterface:
         get_rate_parser.set_defaults(func=self.handle_get_rate)
 
         # НОВАЯ КОМАНДА: update-rates
-        update_rates_parser = self.subparsers.add_parser("update-rates", help="Запустить немедленное обновление курсов валют")
-        update_rates_parser.add_argument("--source", choices=['coingecko', 'exchangerate'], help="Обновить данные только из указанного источника")
+        update_rates_parser = self.subparsers.add_parser("update-rates",
+                                                         help="Запустить немедленное обновление курсов валют")
+        update_rates_parser.add_argument("--source", choices=['coingecko', 'exchangerate'],
+                                         help="Обновить данные только из указанного источника")
         update_rates_parser.set_defaults(func=self.handle_update_rates)
 
         # НОВАЯ КОМАНДА: show-rates (улучшенная версия get-rate)
-        show_rates_parser = self.subparsers.add_parser("show-rates", help="Показать актуальные курсы из локального кеша")
+        show_rates_parser = self.subparsers.add_parser("show-rates",
+                                                       help="Показать актуальные курсы из локального кеша")
         show_rates_parser.add_argument("--currency", help="Показать курс только для указанной валюты")
         show_rates_parser.add_argument("--top", type=int, help="Показать N самых дорогих криптовалют")
         show_rates_parser.add_argument("--base", default="USD", help="Базовая валюта для отображения курсов")
@@ -76,10 +81,11 @@ class CLIInterface:
     def handle_register(self, args):
         try:
             user_id = usecases.register_user(args.username, args.password)
-            print(f"Пользователь '{args.username}' зарегистрирован (id={user_id}). Войдите: login --username {args.username} --password ****")
+            print(f"Пользователь '{args.username}' зарегистрирован (id={user_id}). "
+                  + f"Войдите: login --username {args.username} --password ****")
         except (ValidationError, UserNotFoundError) as e:
             print(f"Ошибка: {e}")
-    
+
     def handle_login(self, args):
         try:
             user_id = usecases.login_user(args.username, args.password)
@@ -166,7 +172,7 @@ class CLIInterface:
             print(result)
         except CurrencyNotFoundError as e:
             print(f"Курс {e.code} недоступен. Попробуйте команду 'get-rate' с известными валютами.")
-        except ApiRequestError as e:
+        except ApiRequestError:
             print(f"Курс {args.from_currency.upper()}→{args.to_currency.upper()} недоступен. Повторите попытку позже.")
 
     def handle_update_rates(self, args):

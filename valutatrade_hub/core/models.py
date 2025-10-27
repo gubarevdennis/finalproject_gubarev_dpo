@@ -2,8 +2,9 @@
 import re
 from decimal import Decimal
 
-from .exceptions import InsufficientFundsError, ValidationError, CurrencyNotFoundError
 from .currencies import get_currency  # Correct import for get_currency
+from .exceptions import CurrencyNotFoundError, InsufficientFundsError, ValidationError
+
 
 class Currency:
     """Абстрактный базовый класс для всех валют."""
@@ -209,7 +210,8 @@ class Wallet:
             raise ValidationError("Сумма снятия должна быть положительным числом Decimal.")
         if amount > self.balance:
             raise InsufficientFundsError(
-                message=f"Недостаточно средств: доступно {self.balance} {self.currency_code}, требуется {amount} {self.currency_code}",
+                message=f"Недостаточно средств: доступно {self.balance} {self.currency_code}," +
+                                                            f" требуется {amount} {self.currency_code}",
                 available_amount=self.balance,
                 required_amount=amount,
                 currency_code=self.currency_code
@@ -294,5 +296,6 @@ class Portfolio:
         """Возвращает объект Wallet по коду валюты."""
         currency_code = currency_code.upper()
         if currency_code not in self._wallets:
-            raise CurrencyNotFoundError(f"Кошелек для валюты '{currency_code}' не найден в портфеле.", code=currency_code)
+            raise CurrencyNotFoundError(f"Кошелек для валюты '{currency_code}' не найден в портфеле.",
+                                                                                    code=currency_code)
         return self._wallets[currency_code]

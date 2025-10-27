@@ -4,20 +4,19 @@ import secrets
 from datetime import datetime
 from decimal import Decimal
 
+from ..decorators import log_action
+from ..infra.database import database_manager
+from ..infra.settings import settings_loader
 from .exceptions import (
-    ValidationError,
-    UserNotFoundError,
-    InvalidCredentialsError,
-    InsufficientFundsError,
-    CurrencyNotFoundError,
     ApiRequestError,
+    CurrencyNotFoundError,
+    InsufficientFundsError,
+    InvalidCredentialsError,
+    UserNotFoundError,
+    ValidationError,
 )
 from .models import get_currency  # Correct import for get_currency
-from ..decorators import log_action
-from ..infra.settings import settings_loader
-from ..infra.database import database_manager
 from .utils import rate_manager
-
 
 BASE_CURRENCY = settings_loader.get('default_base_currency', 'USD')
 RATE_TTL_SECONDS = settings_loader.get('rates_ttl_seconds', 300)
@@ -106,7 +105,8 @@ def show_portfolio(user_id, base_currency=BASE_CURRENCY):
                 rate_key = f"{curr}_{base_currency}"
 
                 # Проверяем наличие 'rates' и самого курса
-                if 'pairs' in rates_cache and rate_key in rates_cache['pairs'] and 'rate' in rates_cache['pairs'][rate_key]:
+                if ('pairs' in rates_cache and rate_key in rates_cache['pairs']
+                            and 'rate' in rates_cache['pairs'][rate_key]):
                     try:
                         rate_value = Decimal(rates_cache['pairs'][rate_key]['rate'])
                         value = balance * rate_value
@@ -197,13 +197,15 @@ def sell_currency(user_id, currency, amount):
         raise UserNotFoundError("Портфель не найден.")
 
     if currency not in portfolio_raw['wallets']:
-        raise CurrencyNotFoundError(f"У вас нет кошелька '{currency}'. Добавьте валюту: она создаётся автоматически при первой покупке.", code=currency)
+        raise CurrencyNotFoundError(f"У вас нет кошелька '{currency}'. "
+                + "Добавьте валюту: она создаётся автоматически при первой покупке.", code=currency)
 
     currency_balance = Decimal(str(portfolio_raw['wallets'][currency]['balance']))
 
     if currency_balance < amount:
         raise InsufficientFundsError(
-            message=f"Недостаточно средств: доступно {currency_balance:.4f} {currency}, требуется {amount:.4f} {currency}",
+            message=f"Недостаточно средств: доступно {currency_balance:.4f} {currency}, " +
+                                                f"требуется {amount:.4f} {currency}",
             available_amount=currency_balance,
             required_amount=amount,
             currency_code=currency
@@ -212,7 +214,8 @@ def sell_currency(user_id, currency, amount):
     rates = rate_manager.get_rates()
     rate_key = f"{currency}_{BASE_CURRENCY}"
 
-    if 'pairs' not in rates or rate_key not in rates['pairs'] or 'rate' not in rates['pairs'][rate_key]:
+    if ('pairs' not in rates or rate_key not in rates['pairs']
+        or 'rate' not in rates['pairs'][rate_key]):
         raise ApiRequestError(f"Курс {currency}→{BASE_CURRENCY} недоступен.")
 
     rate = Decimal(rates['pairs'][rate_key]['rate'])

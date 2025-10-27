@@ -1,7 +1,7 @@
 # valutatrade_hub/core/currencies.py
 import re
+from abc import ABC
 from decimal import Decimal
-from abc import ABC, abstractmethod
 
 from .exceptions import CurrencyNotFoundError, ValidationError
 

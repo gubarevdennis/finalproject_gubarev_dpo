@@ -1,8 +1,7 @@
 # valutatrade_hub/parser_service/storage.py
-import json
 from datetime import datetime
 from decimal import Decimal
-from typing import Dict, Any
+from typing import Dict
 
 from ..infra.database import database_manager  # Используем Singleton DB Manager
 

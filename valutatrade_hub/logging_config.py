@@ -2,8 +2,8 @@
 import logging
 import logging.config
 import os
-from pathlib import Path
 from datetime import datetime
+from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 LOGS_DIR = os.path.join(BASE_DIR, "logs")
@@ -24,7 +24,11 @@ def configure_logging():
             },
             # valutatrade_hub/logging_config.py
             'json': {
-                'format': '{  "timestamp": "%(asctime)s", "level": "%(levelname)s", "name": "%(name)s", "log_message": "%(message)s", "action": "%(action)s", "username": "%(username)s", "currency_code": "%(currency_code)s", "amount": "%(amount)s", "rate": "%(rate)s", "base": "%(base)s",  "result": "%(result)s",  "error_type": "%(error_type)s",  "error_message": "%(error_message)s" }',
+                'format': '{  "timestamp": "%(asctime)s", "level": "%(levelname)s", "name": "%(name)s", '
+                            '"log_message": "%(message)s", "action": "%(action)s", "username": "%(username)s", '
+                            '"currency_code": "%(currency_code)s", "amount": "%(amount)s", "rate": "%(rate)s", '
+                            '"base": "%(base)s",  "result": "%(result)s",  "error_type": "%(error_type)s",  '
+                            '"error_message": "%(error_message)s" }',
                 'datefmt': '%Y-%m-%dT%H:%M:%S%z'
             },
         },

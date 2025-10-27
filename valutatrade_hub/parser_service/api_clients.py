@@ -1,7 +1,8 @@
 # valutatrade_hub/parser_service/api_clients.py
-import requests
 from decimal import Decimal
-from typing import Dict, Any
+from typing import Dict
+
+import requests
 
 from ..core.exceptions import ApiRequestError
 from .config import parser_config
@@ -61,7 +62,7 @@ class ExchangeRateApiClient(BaseApiClient):
             standardized_rates = {}
             for fiat_code, rate_str in data.get("conversion_rates", {}).items():
                 if fiat_code in config.FIAT_CURRENCIES:
-                    pair_key = f"{fiat_code}_USD" 
+                    pair_key = f"{fiat_code}_USD"
                     rate = Decimal(str(rate_str))
                     standardized_rates[pair_key] = rate
 

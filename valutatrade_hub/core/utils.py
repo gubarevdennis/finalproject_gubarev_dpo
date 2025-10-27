@@ -21,7 +21,7 @@ class RateManager:
             "BTC_EUR": Decimal("55000.00"),
             "EUR_BTC": Decimal("0.00001818")
         }
-        self.rate_ttl_seconds = settings_loader.get('rates_ttl_seconds', 300) # Берем TTL из настроек
+        self.rate_ttl_seconds = settings_loader.get('rates_ttl_seconds', 300)
 
     def get_rates(self):
         rates_data = database_manager.get_rates()
@@ -29,7 +29,8 @@ class RateManager:
         # Если rates_data пуст или нет last_refresh, вызываем refresh_rates (который теперь должен быть в Parser)
         last_refresh_str = rates_data.get("last_refresh")
 
-        if not last_refresh_str or (datetime.utcnow() - datetime.fromisoformat(last_refresh_str)).total_seconds() > self.rate_ttl_seconds:
+        if (not last_refresh_str or
+            (datetime.utcnow() - datetime.fromisoformat(last_refresh_str)).total_seconds() > self.rate_ttl_seconds):
             # ВНИМАНИЕ: В реальной системе здесь бы вызывался Parser Service.
             # Сейчас мы вынуждены симулировать обновление, чтобы избежать падений.
             self.refresh_rates()

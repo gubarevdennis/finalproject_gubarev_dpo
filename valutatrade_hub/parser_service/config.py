@@ -8,7 +8,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
 @dataclass
 class ParserConfig:
-    # Singleton instance
+    # Singleton
     _instance = None
 
     def __new__(cls):

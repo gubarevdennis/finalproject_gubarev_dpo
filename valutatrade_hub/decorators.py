@@ -1,8 +1,8 @@
 # valutatrade_hub/decorators.py
-import logging
-from functools import wraps
 import inspect
+import logging
 from datetime import datetime
+from functools import wraps
 
 logger = logging.getLogger(__name__)
 
@@ -63,7 +63,8 @@ def log_action(verbose=False):
                 }
 
                 # Log the action with all relevant information
-                log_message = f"{func.__name__.upper()} action by {extra_info.get('username') or 'Guest'} with result: {result}"
+                log_message = f"{func.__name__.upper()} action by {extra_info.get('username')
+                                                                   or 'Guest'} with result: {result}"
 
                 # Add verbose logging if required (more details)
                 if verbose:

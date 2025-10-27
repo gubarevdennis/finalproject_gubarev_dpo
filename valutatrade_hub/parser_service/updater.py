@@ -1,13 +1,12 @@
 # valutatrade_hub/parser_service/updater.py
 import logging
-from datetime import datetime # Add this import
-from typing import Dict, Any, Optional
+from datetime import datetime  # Add this import
 from decimal import Decimal  # Correct import
+from typing import Dict, Optional
 
 from ..core.exceptions import ApiRequestError
 from .api_clients import CoinGeckoClient, ExchangeRateApiClient
 from .storage import storage
-from .config import parser_config  # Corrected import
 
 logger = logging.getLogger('valutatrade_hub.parser_service')
 
@@ -33,7 +32,8 @@ class RatesUpdater:
             "error_message": "N/A"
         }
 
-        logger.info("Starting rates update.", extra={**base_log_extra, "log_message": "Starting rates update."}) # Changed here
+        logger.info("Starting rates update.", extra={**base_log_extra, "log_message":
+                                                      "Starting rates update."}) # Changed here
 
         # 1. CoinGecko Update
         if source_filter is None or source_filter == "coingecko":
@@ -42,10 +42,11 @@ class RatesUpdater:
                 all_rates.update(cg_rates)
                 self._SOURCE = "coingecko"
                 msg = f"Fetching from CoinGecko... OK ({len(cg_rates)} rates)"
-                logger.info(msg, extra={**base_log_extra, "log_message": msg, "result": "OK"}) # Changed here
+                logger.info(msg, extra={**base_log_extra, "log_message": msg, "result": "OK"})
             except ApiRequestError as e:
                 msg = f"Failed to fetch from CoinGecko: {e}"
-                logger.error(msg, extra={**base_log_extra, "log_message": msg, "result": "ERROR", "error_type": type(e).__name__, "error_message": str(e)}) # Changed here
+                logger.error(msg, extra={**base_log_extra, "log_message": msg, "result":
+                                          "ERROR", "error_type": type(e).__name__, "error_message": str(e)})
 
         # 2. ExchangeRate-API Update
         if source_filter is None or source_filter == "exchangerate":
@@ -57,7 +58,8 @@ class RatesUpdater:
                 logger.info(msg, extra={**base_log_extra, "log_message": msg, "result": "OK"}) # Changed here
             except ApiRequestError as e:
                 msg = f"Failed to fetch from ExchangeRate-API: {e}"
-                logger.error(msg, extra={**base_log_extra, "log_message": msg, "result": "ERROR", "error_type": type(e).__name__, "error_message": str(e)}) # Changed here
+                logger.error(msg, extra={**base_log_extra, "log_message": msg, "result":
+                                          "ERROR", "error_type": type(e).__name__, "error_message": str(e)})
 
         # 3. Save combined rates
         if all_rates:
@@ -66,7 +68,8 @@ class RatesUpdater:
 
             # Формирование ответа для CLI
             if updated_count > 0:
-                print(f"Update successful. Total rates updated: {updated_count}. Last refresh: {datetime.utcnow().isoformat()[:19]}")
+                print(f"Update successful. Total rates updated: {updated_count}." +
+                      f"Last refresh: {datetime.utcnow().isoformat()[:19]}")
             else:
                 print("Update completed, but no new rates were saved.")
         else:
