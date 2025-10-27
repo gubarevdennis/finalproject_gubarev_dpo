@@ -7,7 +7,8 @@ from datetime import datetime
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 LOGS_DIR = os.path.join(BASE_DIR, "logs")
-os.makedirs(LOGS_DIR, exist_ok=True) # Ensure the logs directory exists
+os.makedirs(LOGS_DIR, exist_ok=True)  # Ensure the logs directory exists
+
 
 def configure_logging():
     """Configures logging for the application."""
@@ -22,8 +23,9 @@ def configure_logging():
                 'format': '%(asctime)s [%(levelname)s] %(name)s: %(message)s',
                 'datefmt': '%Y-%m-%dT%H:%M:%S%z'
             },
-            'json': { # Пример формата JSON
-                'format': '{"timestamp": "%(asctime)s", "level": "%(levelname)s", "name": "%(name)s", "message": "%(message)s", "module": "%(module)s", "funcName": "%(funcName)s", "lineno": "%(lineno)d", "action": "%(action)s", "username": "%(username)s", "currency_code": "%(currency_code)s", "amount": "%(amount)s", "rate": "%(rate)s", "base": "%(base)s", "result": "%(result)s", "error_type": "%(error_type)s", "error_message": "%(error_message)s"}',
+            # valutatrade_hub/logging_config.py
+            'json': {
+                'format': '{  "timestamp": "%(asctime)s", "level": "%(levelname)s", "name": "%(name)s", "log_message": "%(message)s", "action": "%(action)s", "username": "%(username)s", "currency_code": "%(currency_code)s", "amount": "%(amount)s", "rate": "%(rate)s", "base": "%(base)s",  "result": "%(result)s",  "error_type": "%(error_type)s",  "error_message": "%(error_message)s" }',
                 'datefmt': '%Y-%m-%dT%H:%M:%S%z'
             },
         },
@@ -45,24 +47,30 @@ def configure_logging():
             },
         },
         'loggers': {
-            'valutatrade_hub': { # Logger for the whole application
+            'valutatrade_hub': {  # Logger for the whole application
                 'handlers': ['console', 'file'],
                 'level': 'INFO',
                 'propagate': True,
             },
-            'valutatrade_hub.core.usecases': { # Logger for usecases
+            'valutatrade_hub.core.usecases': {  # Logger for usecases
                 'handlers': ['console', 'file'],
                 'level': 'INFO',
-                'propagate': False, # Do not propagate to the root logger
+                'propagate': False,  # Do not propagate to the root logger
             },
             'valutatrade_hub.cli.interface': {
                 'handlers': ['console', 'file'],
                 'level': 'INFO',
                 'propagate': False,
             },
+            'valutatrade_hub.parser_service': {
+                 'handlers': ['console', 'file'],
+                 'level': 'INFO',
+                 'propagate': False,
+            },
         },
     }
     logging.config.dictConfig(logging_config)
+
 
 # Example usage:
 if __name__ == "__main__":

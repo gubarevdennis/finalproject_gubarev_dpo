@@ -6,6 +6,7 @@ from decimal import Decimal
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
+
 class DatabaseManager:
     """
     Singleton для управления JSON-хранилищем данных.
@@ -23,6 +24,8 @@ class DatabaseManager:
         self.users_file = os.path.join(BASE_DIR, "data", "users.json")
         self.portfolios_file = os.path.join(BASE_DIR, "data", "portfolios.json")
         self.rates_file = os.path.join(BASE_DIR, "data", "rates.json")
+        # Новый файл, который будет использовать Parser Service
+        self.exchange_rates_history_file = os.path.join(BASE_DIR, "data", "exchange_rates.json")
 
     def _load_json(self, file_path):
         try:
@@ -42,10 +45,11 @@ class DatabaseManager:
             if isinstance(obj, Decimal):
                 return str(obj)
             raise TypeError
-            
+
         with open(file_path, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=4, default=default)
 
+    # --- Методы для Core Service (пока используют те же названия, что и раньше) ---
     def get_all_users(self):
         return self.load_or_default(self.users_file, [])
 
@@ -73,11 +77,17 @@ class DatabaseManager:
         return None
 
     def get_rates(self):
-        # Возвращаем rates, гарантируя, что это словарь, даже если файл пуст или ошибка
-        return self.load_or_default(self.rates_file, {"rates": {}, "last_refresh": None, "source": "Unknown"})
+        return self.load_or_default(self.rates_file, {"pairs": {}, "last_refresh": None})
 
     def save_rates(self, rates):
         self._save_json(rates, self.rates_file)
+
+    # --- Новые методы для Parser Service ---
+    def get_exchange_rates_history(self):
+        return self.load_or_default(self.exchange_rates_history_file, {})
+
+    def save_exchange_rates_history(self, history_data):
+        self._save_json(history_data, self.exchange_rates_history_file)
 
     def load_or_default(self, file_path, default_value):
         try:
@@ -92,5 +102,5 @@ class DatabaseManager:
         except json.JSONDecodeError:
             return default_value
 
-# Создаем экземпляр синглтона
+
 database_manager = DatabaseManager()

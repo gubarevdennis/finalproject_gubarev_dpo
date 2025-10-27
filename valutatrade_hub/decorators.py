@@ -6,10 +6,12 @@ from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
+
 def log_action(verbose=False):
     """
     Декоратор для логирования действий (buy, sell, register, login).
     """
+
     def decorator(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
@@ -45,7 +47,7 @@ def log_action(verbose=False):
                 result = "ERROR"
                 error_type = type(e).__name__
                 error_message = str(e)
-                raise # Re-raise the exception
+                raise  # Re-raise the exception
             finally:
                 extra_info = {
                     'timestamp': datetime.utcnow().isoformat(),
@@ -67,7 +69,8 @@ def log_action(verbose=False):
                 if verbose:
                     log_message += f" Details: {extra_info}"
 
-                logger.info(log_message, extra=extra_info) # Use extra for structured logging
+                logger.info(log_message, extra=extra_info)  # Use extra for structured logging
 
         return wrapper
+
     return decorator

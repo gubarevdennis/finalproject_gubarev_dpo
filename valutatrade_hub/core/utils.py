@@ -1,71 +1,57 @@
 # valutatrade_hub/core/utils.py
-import json
-import os
-from pathlib import Path
 from datetime import datetime
 from decimal import Decimal
 
-from .exceptions import CurrencyNotFoundError # Импорт для возможных исключений
+# Заменим на импорт синглтона
 from ..infra.database import database_manager
+from ..infra.settings import settings_loader
 
-#BASE_DIR = Path(__file__).resolve().parent.parent.parent # теперь не нужно
 
 class RateManager:
     def __init__(self):
-        # Заглушка курсов. В реальном приложении они будут подгружаться.
+        # Мок курсов (пока RateManager их только отдает, но не обновляет сам)
         self.mock_exchange_rates = {
             "USD_USD": Decimal("1.0000"),
             "EUR_USD": Decimal("1.0786"),
-            "USD_EUR": Decimal("0.9271"), # Обратный курс
+            "USD_EUR": Decimal("0.9271"),
             "BTC_USD": Decimal("59337.21"),
-            "USD_BTC": Decimal("0.00001685"), # Обратный курс
+            "USD_BTC": Decimal("0.00001685"),
             "ETH_USD": Decimal("3720.00"),
-            "USD_ETH": Decimal("0.0002688"), # Обратный курс
-            "BTC_EUR": Decimal("55000.00"), # Примерный курс
-            "EUR_BTC": Decimal("0.00001818") # Примерный обратный курс
+            "USD_ETH": Decimal("0.0002688"),
+            "BTC_EUR": Decimal("55000.00"),
+            "EUR_BTC": Decimal("0.00001818")
         }
-        self.rate_ttl_seconds = 300 # Время жизни кеша в секундах
+        self.rate_ttl_seconds = settings_loader.get('rates_ttl_seconds', 300) # Берем TTL из настроек
 
     def get_rates(self):
         rates_data = database_manager.get_rates()
-        
-        # Если данных нет или они устарели, обновляем
+
+        # Если rates_data пуст или нет last_refresh, вызываем refresh_rates (который теперь должен быть в Parser)
         last_refresh_str = rates_data.get("last_refresh")
-        if not last_refresh_str:
+
+        if not last_refresh_str or (datetime.utcnow() - datetime.fromisoformat(last_refresh_str)).total_seconds() > self.rate_ttl_seconds:
+            # ВНИМАНИЕ: В реальной системе здесь бы вызывался Parser Service.
+            # Сейчас мы вынуждены симулировать обновление, чтобы избежать падений.
             self.refresh_rates()
             rates_data = database_manager.get_rates()
-        else:
-            try:
-                last_refresh = datetime.fromisoformat(last_refresh_str)
-                if (datetime.utcnow() - last_refresh).total_seconds() > self.rate_ttl_seconds:
-                    self.refresh_rates()
-                    rates_data = database_manager.get_rates()
-            except ValueError: # Если формат даты некорректен
-                self.refresh_rates()
-                rates_data = database_manager.get_rates()
-                
+
         return rates_data
 
     def refresh_rates(self):
-        """Обновляет заглушку курсов и сохраняет в rates.json."""
+        """Симуляция обновления данных, которые должны были прийти из Parser Service."""
         rates_data = {
-            "source": "MockParserService",
+            "source": "Mocked_Parser_Service",
             "last_refresh": datetime.utcnow().isoformat(),
-            "rates": {}
+            "pairs": {}
         }
-        
-        # Добавляем прямые и обратные курсы
+
         for pair, rate in self.mock_exchange_rates.items():
             from_currency, to_currency = pair.split('_')
-            # Добавляем только если нужная валюта существует в реестре
-            # (Это упрощение, в реальном парсере нужно было бы проверять наличие валют)
-            rates_data["rates"][pair] = {"rate": str(rate), "updated_at": rates_data["last_refresh"]}
+            # Сохраняем в формате, который ожидает Core (из rates.json ТЗ)
+            rates_data["pairs"][pair] = {"rate": str(rate), "updated_at": rates_data["last_refresh"]}
 
         database_manager.save_rates(rates_data)
         return rates_data
 
-#data_manager = DataManager() # Убрали создание экземпляра DataManager
-rate_manager = RateManager() # Передаем в RateManager экземпляр Singleton
 
-# Создадим экземпляр RateManager при старте приложения:
 rate_manager = RateManager()

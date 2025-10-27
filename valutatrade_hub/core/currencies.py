@@ -5,8 +5,10 @@ from abc import ABC, abstractmethod
 
 from .exceptions import CurrencyNotFoundError, ValidationError
 
+
 class Currency(ABC):
     """Абстрактный базовый класс для всех валют."""
+
     def __init__(self, name: str, code: str):
         self._validate_code(code)
         self._validate_name(name)
@@ -28,7 +30,7 @@ class Currency(ABC):
 
     @code.setter
     def code(self, value: str):
-        self._validate_code(value)
+        self._validate_code(code)
         self._code = value
 
     def _validate_code(self, code: str):
@@ -51,8 +53,10 @@ class Currency(ABC):
     def __repr__(self):
         return f"{self.__class__.__name__}(code='{self.code}', name='{self.name}')"
 
+
 class FiatCurrency(Currency):
     """Класс для фиатных валют."""
+
     def __init__(self, name: str, code: str, issuing_country: str):
         super().__init__(name, code)
         self._validate_issuing_country(issuing_country)
@@ -74,8 +78,10 @@ class FiatCurrency(Currency):
     def get_display_info(self) -> str:
         return f"[FIAT] {self.code} — {self.name} (Issuing: {self.issuing_country})"
 
+
 class CryptoCurrency(Currency):
     """Класс для криптовалют."""
+
     def __init__(self, name: str, code: str, algorithm: str, market_cap: Decimal):
         super().__init__(name, code)
         self._validate_algorithm(algorithm)
@@ -97,7 +103,7 @@ class CryptoCurrency(Currency):
         return self._market_cap
 
     @market_cap.setter
-    def market_cap(self, value: Decimal):
+    def market_cap(self, value: str):
         self._validate_market_cap(value)
         self._market_cap = value
 
@@ -121,6 +127,7 @@ _currency_registry = {
     "BTC": CryptoCurrency(name="Bitcoin", code="BTC", algorithm="SHA-256", market_cap=Decimal("1120000000000")),
     "ETH": CryptoCurrency(name="Ethereum", code="ETH", algorithm="Ethash", market_cap=Decimal("450000000000")),
 }
+
 
 def get_currency(code: str) -> Currency:
     """Возвращает объект Currency по его коду."""

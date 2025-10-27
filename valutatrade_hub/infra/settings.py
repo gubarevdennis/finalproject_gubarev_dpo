@@ -6,6 +6,7 @@ from typing import Any
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
+
 class SettingsLoader:
     """
     Singleton для загрузки и хранения настроек приложения.
@@ -50,6 +51,7 @@ class SettingsLoader:
     def reload(self):
         """Перезагружает настройки из файла."""
         self._load_settings()
+
 
 # Create the singleton instance
 settings_loader = SettingsLoader()

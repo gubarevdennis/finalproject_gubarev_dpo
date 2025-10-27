@@ -1,12 +1,13 @@
 # valutatrade_hub/core/models.py
-from decimal import Decimal
 import re
+from decimal import Decimal
 
 from .exceptions import InsufficientFundsError, ValidationError, CurrencyNotFoundError
-#from .currencies import get_currency # <--- Импорт get_currency
+from .currencies import get_currency  # Correct import for get_currency
 
-class Currency: # ... (код класса Currency без изменений) ...
+class Currency:
     """Абстрактный базовый класс для всех валют."""
+
     def __init__(self, name: str, code: str):
         self._validate_code(code)
         self._validate_name(name)
@@ -54,6 +55,7 @@ class Currency: # ... (код класса Currency без изменений) .
 
 class FiatCurrency(Currency):
     """Класс для фиатных валют."""
+
     def __init__(self, name: str, code: str, issuing_country: str):
         super().__init__(name, code)
         self._validate_issuing_country(issuing_country)
@@ -78,6 +80,7 @@ class FiatCurrency(Currency):
 
 class CryptoCurrency(Currency):
     """Класс для криптовалют."""
+
     def __init__(self, name: str, code: str, algorithm: str, market_cap: Decimal):
         super().__init__(name, code)
         self._validate_algorithm(algorithm)
@@ -118,6 +121,7 @@ class CryptoCurrency(Currency):
 # --- User Class (из предыдущей версии) ---
 class User:
     """Пользователь системы."""
+
     def __init__(self, user_id: int, username: str, hashed_password: str, salt: str, registration_date: str):
         self._user_id = user_id
         self._username = username
@@ -158,28 +162,28 @@ class User:
         if len(new_password) < 4:
             raise ValidationError("Пароль должен быть не короче 4 символов.")
         # Здесь должна быть логика с хешированием нового пароля
-        self._hashed_password = new_password # Замените на реальное хеширование с солью
+        self._hashed_password = new_password  # Замените на реальное хеширование с солью
 
     def verify_password(self, password: str) -> bool:
         # Здесь должна быть логика сравнения с хешем
-        return password == self._hashed_password # Замените на реальное сравнение с хешем
+        return password == self._hashed_password  # Замените на реальное сравнение с хешем
 
 
 # --- Wallet Class ---
 class Wallet:
     """Кошелёк пользователя для одной конкретной валюты."""
+
     def __init__(self, currency_code: str, balance: Decimal = Decimal("0.0")):
         # ВАЖНО: Валидация currency_code теперь через get_currency из currencies.py
         try:
-            from .models import get_currency
-            get_currency(currency_code) # Проверка существования валюты
+            get_currency(currency_code)  # Проверка существования валюты
         except CurrencyNotFoundError as e:
             raise ValidationError(f"Недопустимый код валюты: {e}") from e
-            
+
         self.currency_code = currency_code
         if not isinstance(balance, Decimal):
             balance = Decimal(balance)
-        self._balance = balance # Изначально присваиваем, setter выполнит валидацию
+        self._balance = balance  # Изначально присваиваем, setter выполнит валидацию
 
     @property
     def balance(self) -> Decimal:
@@ -219,6 +223,7 @@ class Wallet:
 # --- Portfolio Class ---
 class Portfolio:
     """Управление всеми кошельками одного пользователя."""
+
     def __init__(self, user_id: int, wallets: dict[str, Wallet] = None):
         self._user_id = user_id
         self._wallets = wallets if wallets is not None else {}
@@ -235,21 +240,21 @@ class Portfolio:
         """Добавляет новый кошелёк в портфель (если его ещё нет)."""
         currency_code = currency_code.upper()
         try:
-            get_currency(currency_code) # Проверка существования валюты
+            get_currency(currency_code)  # Проверка существования валюты
         except CurrencyNotFoundError as e:
             raise ValidationError(f"Недопустимый код валюты: {e}") from e
 
         if currency_code in self._wallets:
             raise ValidationError(f"Кошелек для валюты '{currency_code}' уже существует.")
-        
+
         self._wallets[currency_code] = Wallet(currency_code=currency_code)
 
     def get_total_value(self, base_currency='USD', exchange_rates=None) -> Decimal:
         """Возвращает общую стоимость всех валют пользователя в указанной базовой валюте."""
         total_value = Decimal('0.0')
         if exchange_rates is None:
-            exchange_rates = {} # Заглушка
-        
+            exchange_rates = {}  # Заглушка
+
         try:
             get_currency(base_currency)
         except CurrencyNotFoundError as e:
@@ -261,28 +266,28 @@ class Portfolio:
                 total_value += balance
             else:
                 rate_key = f"{currency_code}_{base_currency}"
-                
+
                 # Важно: Проверяем наличие курса в 'rates' и сам курс
-                rate_info = exchange_rates.get('rates', {}).get(rate_key)
+                rate_info = exchange_rates.get('pairs', {}).get(rate_key)
 
                 # Важно: Если rate_info нет, попробуем перевернуть пару валют (base->currency)
                 if not rate_info and base_currency != 'USD':
                     rate_key_reversed = f"{base_currency}_{currency_code}"
-                    rate_info = exchange_rates.get('rates', {}).get(rate_key_reversed)
+                    rate_info = exchange_rates.get('pairs', {}).get(rate_key_reversed)
                     if rate_info and 'rate' in rate_info:
                         try:
                             rate_value = Decimal('1.0') / Decimal(rate_info['rate'])
                             total_value += balance * rate_value
-                            continue # <--- Важно: переходим к следующей валюте
+                            continue  # <--- Важно: переходим к следующей валюте
                         except (ValueError, TypeError, ZeroDivisionError):
-                            pass # Обработка ошибки (лог или что-то еще)
+                            pass  # Обработка ошибки (лог или что-то еще)
                 if rate_info and 'rate' in rate_info:
                     try:
                         rate_value = Decimal(rate_info['rate'])
                         total_value += balance * rate_value
                     except (ValueError, TypeError):
                         # Игнорируем ошибки конвертации для отдельной валюты
-                        pass 
+                        pass
         return total_value
 
     def get_wallet(self, currency_code: str) -> Wallet:
@@ -291,19 +296,3 @@ class Portfolio:
         if currency_code not in self._wallets:
             raise CurrencyNotFoundError(f"Кошелек для валюты '{currency_code}' не найден в портфеле.", code=currency_code)
         return self._wallets[currency_code]
-# --- Реестр валют (фабрика) ---
-_currency_registry = {
-    "USD": FiatCurrency(name="US Dollar", code="USD", issuing_country="United States"),
-    "EUR": FiatCurrency(name="Euro", code="EUR", issuing_country="Eurozone"),
-    "RUB": FiatCurrency(name="Russian Ruble", code="RUB", issuing_country="Russian Federation"),
-    "BTC": CryptoCurrency(name="Bitcoin", code="BTC", algorithm="SHA-256", market_cap=Decimal("1120000000000")),
-    "ETH": CryptoCurrency(name="Ethereum", code="ETH", algorithm="Ethash", market_cap=Decimal("450000000000")),
-}
-
-def get_currency(code: str) -> Currency:
-    """Возвращает объект Currency по его коду."""
-    code = code.upper()
-    currency = _currency_registry.get(code)
-    if not currency:
-        raise CurrencyNotFoundError(f"Неизвестная валюта '{code}'", code=code)
-    return currency

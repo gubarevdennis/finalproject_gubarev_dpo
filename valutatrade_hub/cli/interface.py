@@ -1,4 +1,4 @@
-# valuatrade_hub/cli/interface.py
+# valutatrade_hub/cli/interface.py (продолжение)
 import argparse
 import sys
 from prettytable import PrettyTable
@@ -15,13 +15,18 @@ from ..core.exceptions import (
     ApiRequestError
 )
 from ..logging_config import configure_logging  # Import configure_logging
+from ..parser_service.updater import updater
+from ..parser_service.config import parser_config
+from ..core.models import get_currency  # Для show-rates
+from ..infra.database import database_manager  # Import the database manager
+
 
 class CLIInterface:
     def __init__(self):
         self.parser = argparse.ArgumentParser(description="ValutaTrade Hub CLI")
         self.subparsers = self.parser.add_subparsers(dest="command", required=True)
         self.user_id = None  # Состояние сессии
-        self.username = None # Состояние имени пользователя
+        self.username = None  # Состояние имени пользователя
 
         self._setup_parsers()
 
@@ -55,7 +60,18 @@ class CLIInterface:
         get_rate_parser.add_argument("--from", required=True, dest="from_currency", help="Исходная валюта")
         get_rate_parser.add_argument("--to", required=True, dest="to_currency", help="Целевая валюта")
         get_rate_parser.set_defaults(func=self.handle_get_rate)
-    
+
+        # НОВАЯ КОМАНДА: update-rates
+        update_rates_parser = self.subparsers.add_parser("update-rates", help="Запустить немедленное обновление курсов валют")
+        update_rates_parser.add_argument("--source", choices=['coingecko', 'exchangerate'], help="Обновить данные только из указанного источника")
+        update_rates_parser.set_defaults(func=self.handle_update_rates)
+
+        # НОВАЯ КОМАНДА: show-rates (улучшенная версия get-rate)
+        show_rates_parser = self.subparsers.add_parser("show-rates", help="Показать актуальные курсы из локального кеша")
+        show_rates_parser.add_argument("--currency", help="Показать курс только для указанной валюты")
+        show_rates_parser.add_argument("--top", type=int, help="Показать N самых дорогих криптовалют")
+        show_rates_parser.add_argument("--base", default="USD", help="Базовая валюта для отображения курсов")
+        show_rates_parser.set_defaults(func=self.handle_show_rates)
 
     def handle_register(self, args):
         try:
@@ -84,19 +100,19 @@ class CLIInterface:
 
         try:
             portfolio_data, total_value = usecases.show_portfolio(self.user_id, args.base.upper())
-            
+
             table = PrettyTable()
             table.field_names = ["Валюта", "Баланс", f"Стоимость ({args.base.upper()})"]
             table.align["Валюта"] = "l"
             table.align["Баланс"] = "r"
             table.align[f"Стоимость ({args.base.upper()})"] = "r"
-            
+
             if not portfolio_data:
-                 table.add_row(["", "", ""])
+                table.add_row(["", "", ""])
             else:
-                 for currency, data in portfolio_data.items():
-                     # Форматирование выводим в CLI
-                     table.add_row([currency, f"{data['balance']:.4f}", f"{data['value_in_base']:.2f}"])
+                for currency, data in portfolio_data.items():
+                    # Форматирование выводим в CLI
+                    table.add_row([currency, f"{data['balance']:.4f}", f"{data['value_in_base']:.2f}"])
 
             print(f"Портфель пользователя '{self.username}' (база: {args.base.upper()}):")
             print(table)
@@ -107,7 +123,6 @@ class CLIInterface:
             print(f"Ошибка: {e}")
         except CurrencyNotFoundError as e:
             print(f"Ошибка: Неизвестная базовая валюта '{e.code}'")
-
 
     def handle_buy(self, args):
         if not self.user_id:
@@ -121,13 +136,11 @@ class CLIInterface:
         except ValidationError as e:
             print(f"Ошибка: {e}")
         except InsufficientFundsError as e:
-            # Печатаем сообщение, которое было передано через исключение
-            print(e) 
+            print(e)  # Теперь печатает сообщение из исключения, которое логируется декоратором
         except ApiRequestError:
             print(f"Ошибка: Не удалось получить курс для {args.currency.upper()}→USD")
         except CurrencyNotFoundError as e:
             print(f"Ошибка: Неизвестная валюта '{e.code}'")
-
 
     def handle_sell(self, args):
         if not self.user_id:
@@ -141,31 +154,88 @@ class CLIInterface:
         except ValidationError as e:
             print(f"Ошибка: {e}")
         except CurrencyNotFoundError as e:
-            print(e) # Печатаем сообщение из исключения
+            print(e)  # Печатаем сообщение из исключения
         except InsufficientFundsError as e:
-            print(e) # Печатаем сообщение из исключения
+            print(e)  # Печатаем сообщение из исключения
         except ApiRequestError:
             print(f"Ошибка: Не удалось получить курс для {args.currency.upper()}→USD")
-
 
     def handle_get_rate(self, args):
         try:
             result = usecases.get_rate(args.from_currency.upper(), args.to_currency.upper())
             print(result)
         except CurrencyNotFoundError as e:
-            # Согласно ТЗ: предлагать help get-rate или показать список поддерживаемых кодов.
-            print(f"Курс {e.code} недоступен. Попробуйте команду 'get-rate' с известными валютами.") 
+            print(f"Курс {e.code} недоступен. Попробуйте команду 'get-rate' с известными валютами.")
         except ApiRequestError as e:
             print(f"Курс {args.from_currency.upper()}→{args.to_currency.upper()} недоступен. Повторите попытку позже.")
 
+    def handle_update_rates(self, args):
+        print("INFO: Starting rates update...")
+        try:
+            updater.run_update(args.source)
+        except ApiRequestError as e:
+            print(f"ERROR: Failed during update: {e}")
+        except Exception as e:
+            print(f"FATAL ERROR during update: {e}")
 
-# valuatrade_hub/cli/interface.py (Продолжение)
-# ... (весь код до этого места был корректным)
+    def handle_show_rates(self, args):
+        """
+        Отображает текущие курсы валют из кэша.
+        """
+        try:
+            rates_data = database_manager.get_rates()
+            rates = rates_data.get('pairs', {})
+            last_refresh = rates_data.get('last_refresh', 'N/A')
+
+           # Фильтрация
+            filtered_rates = rates
+            if args.currency:
+                target_currency = args.currency.upper()
+                # Фильтруем пары, где target_currency либо FROM, либо TO
+                filtered_rates = {
+                    pair: data for pair, data in rates.items()
+                    if pair.startswith(target_currency + '_') or pair.endswith('_' + target_currency)
+                }
+
+            # Подготовка данных для сортировки (если --top)
+            sortable_data = []
+            for pair, data in filtered_rates.items():
+                try:
+                    rate = Decimal(data['rate'])
+                    sortable_data.append((pair, rate, data))
+                except (ValueError, TypeError):
+                    print(f"WARNING: Invalid rate for {pair}, skipping.")
+
+            sortable_data.sort(key=lambda x: x[0])
+
+            if args.top:
+                try:
+                    top_n = int(args.top)
+                    sortable_data = sortable_data[:top_n]
+                except ValueError:
+                    print("Ошибка: --top должно быть целым числом.")
+                    return
+
+            print(f"Rates from cache (updated at {last_refresh}):")
+            table = PrettyTable()
+            table.field_names = ["Пара", "Курс", "Обновлено", "Источник"]
+            table.align = "l"
+            for pair, rate, data in sortable_data:
+                table.add_row([
+                    pair,
+                    f"{rate:.8f}",
+                    data['updated_at'][:19],
+                    data['source']
+                ])
+            print(table)
+
+        except Exception as e:
+            print(f"Ошибка при отображении курсов: {e}")
 
     def run(self):
-        configure_logging() # Configure logging at the start
+        configure_logging()  # Configure logging at the start
 
-        # ... (логика интерактивного режима) ...
+        # Логика интерактивного режима
         if len(sys.argv) == 1:
             print("--- ValutaTrade Hub CLI (Интерактивный режим) ---")
             print("Введите команды или 'exit' для выхода.")
@@ -222,10 +292,22 @@ class CLIInterface:
                         parser_temp.add_argument("--to", required=True, dest="to_currency")
                         args = parser_temp.parse_args(args_list)
                         self.handle_get_rate(args)
+                    elif command == "update-rates":
+                        parser_temp = argparse.ArgumentParser()
+                        parser_temp.add_argument("--source", choices=['coingecko', 'exchangerate'], default=None)
+                        args = parser_temp.parse_args(args_list)
+                        self.handle_update_rates(args)
+                    elif command == "show-rates":
+                        parser_temp = argparse.ArgumentParser()
+                        parser_temp.add_argument("--currency")
+                        parser_temp.add_argument("--top", type=int)
+                        parser_temp.add_argument("--base", default="USD")
+                        args = parser_temp.parse_args(args_list)
+                        self.handle_show_rates(args)
                     else:
                         print("Ошибка: Неизвестная команда")
 
-                except SystemExit: # argparse вызывает SystemExit при ошибках
+                except SystemExit:  # argparse вызывает SystemExit при ошибках
                     pass
                 except Exception as e:
                     print(f"Непредвиденная ошибка: {e}")
