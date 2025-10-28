@@ -1,0 +1,54 @@
+# Python-specific ignores
+
+*.pyc
+__pycache__/
+.venv/
+venv/
+env/
+Envs/
+*.egg-info/
+*.swp
+*~
+
+# Byte-compiled / optimized / DLL files
+__pycache__
+*.py[cod]
+*$py.class
+
+# Distribution / packaging
+.Python
+build/
+dist/
+sdist/
+*.egg
+*.whl
+pip-log.txt
+pip-delete-this.txt
+.tox/
+.coverage
+.coverage.*
+nosetests.xml
+coverage.xml
+*.cover
+*.log
+*.orig
+*.rej
+.vscode/
+.idea/
+tmp/
+temp/
+TEMP/
+*.tmproj/
+
+data/users.json
+data/portfolios.json
+data/rates.json
+data/exchange_rates.json
+logs/
+
+# Ignore __pycache__ in all subdirectories
+**/__pycache__/
+
+ **/__init__.py
+
+*.cast
