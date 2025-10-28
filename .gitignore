@@ -49,6 +49,6 @@ logs/
 # Ignore __pycache__ in all subdirectories
 **/__pycache__/
 
- **/__init__.py
+**/__init__.py
 
 *.cast

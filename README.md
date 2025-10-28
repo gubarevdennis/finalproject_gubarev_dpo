@@ -7,19 +7,44 @@ ValutaTrade Hub - это CLI-приложение для управления к
 ## Структура каталогов
 
 finalproject_gubarev_dpo/ │
+
 ├── data/ │ ├── users.json
+
 │ ├── portfolios.json
-│ ├── rates.json # локальный кэш для Core Service │ └── exchange_rates.json # хранилище Parser Service (исторические данные).json
+
+│ ├── rates.json # локальный кэш для Core Service │ └── exchange_rates.json # хранилище Parser Service 
+(исторические данные).json
+
 ├── valutatrade_hub/ │ ├── init.py │ ├── logging_config.py
+
 │ ├── decorators.py
+
 │ ├── core/ │ │ ├── init.py │ │ ├── currencies.py
+
 │ │ ├── exceptions.py
+
 │ │ ├── models.py
+
 │ │ ├── usecases.py
+
 │ │ └── utils.py
+
 │ ├── infra/ │ │ ├─ init.py │ │ ├── settings.py
+
 │ │ └── database.py
-│ ├── parser_service/ │ │ ├── init.py │ │ ├── config.py # конфигурация API и параметров обновления │ │ ├── api_clients.py # работа с внешними API │ │ ├── updater.py # основной модуль обновления курсов │ │ ├── storage.py # операции чтения/записи exchange_rates.json │ │ └── scheduler.py # планировщик периодического обновления │ └── cli/ │ ├─ init.py │ └─ interface.py
+
+│ ├── parser_service/ │ │ ├── init.py 
+
+│ │ ├── config.py # конфигурация API и параметров обновления 
+
+│ │ ├── api_clients.py # работа с внешними API 
+
+│ │ ├── updater.py # основной модуль обновления курсов 
+
+│ │ ├── storage.py # операции чтения/записи exchange_rates.json 
+
+│ │ └── scheduler.py # планировщик периодического обновления │ └── cli/ │ ├─ init.py │ └─ interface.py
+
 │ ├── main.py ├── Makefile ├── poetry.lock ├── pyproject.toml ├── README.md └── .gitignore
 
 *   `data/`: Хранит данные пользователей (`users.json`), портфели (`portfolios.json`), актуальные курсы (`rates.json`) и историю курсов (`exchange_rates.json`).
@@ -73,41 +98,41 @@ finalproject_gubarev_dpo/ │
 ## Команды CLI
 
 ### Регистрация пользователя
-project register –username <имя_пользователя> –password <пароль>
+`project register –username <имя_пользователя> –password <пароль>`
  
 
 ### Вход пользователя
-project login –username <имя_пользователя> –password <пароль>
+`project login –username <имя_пользователя> –password <пароль>`
  
 
 ### Просмотр портфеля
-project show-portfolio [–base <валюта>]
+`project show-portfolio [–base <валюта>]`
  
 
 *   `--base`: Базовая валюта для отображения стоимости портфеля (по умолчанию USD).
 
 ### Покупка валюты
-project buy –currency <код_валюты> –amount <сумма>
+`project buy –currency <код_валюты> –amount <сумма>`
  
 
 ### Продажа валюты
-project sell –currency <код_валюты> –amount <сумма>
+`project sell –currency <код_валюты> –amount <сумма>`
 
 ### Получение курса валюты
-project get-rate –pair <валютная_пара>
+`project get-rate –pair <валютная_пара>`
  
 
 Пример: `project get-rate --pair BTC/USD`
 
 ### Просмотр курсов валют
-project show-rates [–currency <код_валюты>] [–top <количество>]
+`project show-rates [–currency <код_валюты>] [–top <количество>]`
  
 
 *   `--currency`: Фильтр по валюте.
 *   `--top`: Отображает N самых дорогих валют.
 
 ### Обновление курсов валют
-project update-rates [–source <источник>]
+`project update-rates [–source <источник>]`
  
 
 *   `--source`: Источник данных (`coingecko` или `exchangerate`). По умолчанию - оба.
