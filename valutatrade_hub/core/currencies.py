@@ -7,7 +7,7 @@ from .exceptions import CurrencyNotFoundError, ValidationError
 
 
 class Currency(ABC):
-    """Абстрактный базовый класс для всех валют."""
+    """Абстрактный базовый класс для всех валют"""
 
     def __init__(self, name: str, code: str):
         self._validate_code(code)
@@ -30,7 +30,7 @@ class Currency(ABC):
 
     @code.setter
     def code(self, value: str):
-        self._validate_code(code)
+        self._validate_code(value)
         self._code = value
 
     def _validate_code(self, code: str):
@@ -130,7 +130,7 @@ _currency_registry = {
 
 
 def get_currency(code: str) -> Currency:
-    """Возвращает объект Currency по его коду."""
+    """Возвращает объект Currency по его коду"""
     code = code.upper()
     currency = _currency_registry.get(code)
     if not currency:

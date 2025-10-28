@@ -6,46 +6,42 @@ ValutaTrade Hub - это CLI-приложение для управления к
 
 ## Структура каталогов
 
-finalproject_gubarev_dpo/ │
-
-├── data/ │ ├── users.json
-
+finalproject_gubarev_dpo/ 
+│ ├── data/ 
+│ ├── users.json
 │ ├── portfolios.json
-
-│ ├── rates.json # локальный кэш для Core Service │ └── exchange_rates.json # хранилище Parser Service 
-(исторические данные).json
-
-├── valutatrade_hub/ │ ├── init.py │ ├── logging_config.py
-
+│ ├── rates.json # локальный кэш для Core Service 
+│ └── exchange_rates.json # хранилище Parser Service 
+├── valutatrade_hub/ 
+│ ├── init.py 
+│ ├── logging_config.py
 │ ├── decorators.py
-
-│ ├── core/ │ │ ├── init.py │ │ ├── currencies.py
-
+│ ├── core/ 
+│ │ ├── init.py 
+│ │ ├── currencies.py
 │ │ ├── exceptions.py
-
 │ │ ├── models.py
-
 │ │ ├── usecases.py
-
 │ │ └── utils.py
-
-│ ├── infra/ │ │ ├─ init.py │ │ ├── settings.py
-
+│ ├── infra/ 
+│ │ ├─ init.py 
+│ │ ├── settings.py
 │ │ └── database.py
-
-│ ├── parser_service/ │ │ ├── init.py 
-
+│ ├── parser_service/ 
+│ │ ├── init.py 
 │ │ ├── config.py # конфигурация API и параметров обновления 
-
 │ │ ├── api_clients.py # работа с внешними API 
-
 │ │ ├── updater.py # основной модуль обновления курсов 
-
 │ │ ├── storage.py # операции чтения/записи exchange_rates.json 
-
-│ │ └── scheduler.py # планировщик периодического обновления │ └── cli/ │ ├─ init.py │ └─ interface.py
-
-│ ├── main.py ├── Makefile ├── poetry.lock ├── pyproject.toml ├── README.md └── .gitignore
+│ └── cli/ 
+│ ├─ init.py 
+│ └─ interface.py
+├── main.py 
+├── Makefile 
+├── poetry.lock 
+├── pyproject.toml 
+├── README.md 
+└── .gitignore
 
 *   `data/`: Хранит данные пользователей (`users.json`), портфели (`portfolios.json`), актуальные курсы (`rates.json`) и историю курсов (`exchange_rates.json`).
 *   `valutatrade_hub/`: Основной пакет приложения.

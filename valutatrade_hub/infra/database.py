@@ -34,11 +34,11 @@ class DatabaseManager:
                 if content:
                     return json.loads(content)
                 else:
-                    return {}
+                    return []  #  Возвращаем пустой список, если файл пуст
         except FileNotFoundError:
-            return {}
+            return []  #  Возвращаем пустой список, если файл не найден
         except json.JSONDecodeError:
-            return {}
+            return []  #  Возвращаем пустой список, если ошибка декодирования JSON
 
     def _save_json(self, data, file_path):
         def default(obj):
@@ -51,7 +51,7 @@ class DatabaseManager:
 
     # --- Методы для Core Service (пока используют те же названия, что и раньше) ---
     def get_all_users(self):
-        return self.load_or_default(self.users_file, [])
+        return self._load_json(self.users_file)  # Используем _load_json напрямую
 
     def save_users(self, users):
         self._save_json(users, self.users_file)

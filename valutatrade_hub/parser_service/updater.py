@@ -13,7 +13,7 @@ logger = logging.getLogger('valutatrade_hub.parser_service')
 class RatesUpdater:
     def __init__(self):
         self.coingecko_client = CoinGeckoClient()
-        self.exchangerate_client = ExchangeRateApiClient() # Fix the typo
+        self.exchangerate_client = ExchangeRateApiClient()
         self._SOURCE = "Combined"
 
     def run_update(self, source_filter: Optional[str] = None):
@@ -33,9 +33,9 @@ class RatesUpdater:
         }
 
         logger.info("Starting rates update.", extra={**base_log_extra, "log_message":
-                                                      "Starting rates update."}) # Changed here
+                                                      "Starting rates update."})
 
-        # 1. CoinGecko Update
+        # CoinGecko
         if source_filter is None or source_filter == "coingecko":
             try:
                 cg_rates = self.coingecko_client.fetch_rates()
@@ -48,7 +48,7 @@ class RatesUpdater:
                 logger.error(msg, extra={**base_log_extra, "log_message": msg, "result":
                                           "ERROR", "error_type": type(e).__name__, "error_message": str(e)})
 
-        # 2. ExchangeRate-API Update
+        # ExchangeRate-API
         if source_filter is None or source_filter == "exchangerate":
             try:
                 er_rates = self.exchangerate_client.fetch_rates()
@@ -61,9 +61,8 @@ class RatesUpdater:
                 logger.error(msg, extra={**base_log_extra, "log_message": msg, "result":
                                           "ERROR", "error_type": type(e).__name__, "error_message": str(e)})
 
-        # 3. Save combined rates
         if all_rates:
-            # Save to rates.json (snapshot)
+            # Сохранение в rates.json
             updated_count = storage.save_current_rates(all_rates, source=self._SOURCE)
 
             # Формирование ответа для CLI

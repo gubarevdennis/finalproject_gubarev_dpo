@@ -1,4 +1,4 @@
-# valutatrade_hub/cli/interface.py (продолжение)
+# valutatrade_hub/cli/interface.py
 import argparse
 import sys
 from decimal import Decimal
@@ -16,8 +16,8 @@ from ..core.exceptions import (
     UserNotFoundError,
     ValidationError,
 )
-from ..infra.database import database_manager  # Import the database manager
-from ..logging_config import configure_logging  # Import configure_logging
+from ..infra.database import database_manager
+from ..logging_config import configure_logging 
 from ..parser_service.updater import updater
 
 
@@ -63,14 +63,14 @@ class CLIInterface:
         get_rate_parser.add_argument("--to", required=True, dest="to_currency", help="Целевая валюта")
         get_rate_parser.set_defaults(func=self.handle_get_rate)
 
-        # НОВАЯ КОМАНДА: update-rates
+        # update-rates
         update_rates_parser = self.subparsers.add_parser("update-rates",
                                                          help="Запустить немедленное обновление курсов валют")
         update_rates_parser.add_argument("--source", choices=['coingecko', 'exchangerate'],
                                          help="Обновить данные только из указанного источника")
         update_rates_parser.set_defaults(func=self.handle_update_rates)
 
-        # НОВАЯ КОМАНДА: show-rates (улучшенная версия get-rate)
+        # show-rates (улучшенная версия get-rate)
         show_rates_parser = self.subparsers.add_parser("show-rates",
                                                        help="Показать актуальные курсы из локального кеша")
         show_rates_parser.add_argument("--currency", help="Показать курс только для указанной валюты")
@@ -239,7 +239,7 @@ class CLIInterface:
             print(f"Ошибка при отображении курсов: {e}")
 
     def run(self):
-        configure_logging()  # Configure logging at the start
+        configure_logging()
 
         # Логика интерактивного режима
         if len(sys.argv) == 1:

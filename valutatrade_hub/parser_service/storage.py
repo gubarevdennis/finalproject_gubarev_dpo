@@ -10,14 +10,14 @@ class RateStorage:
     def save_current_rates(self, rates_map: Dict[str, Decimal], source: str):
         # print(rates_map)
         """
-        Обновляет rates.json (снимок) и добавляет запись в exchange_rates.json (история).
+        Обновляет rates.json (снимок) и добавляет запись в exchange_rates.json (история)
         """
         now_iso = datetime.utcnow().isoformat()
 
         # 1. Обновление rates.json (Снимок)
         current_rates_snapshot = database_manager.get_rates()
 
-        # Убеждаемся, что структура соответствует ТЗ 4.2: {"pairs": {...}, "last_refresh": ...}
+        # Убеждаемся, что структура соответствует ТЗ
         if 'pairs' not in current_rates_snapshot:
             current_rates_snapshot['pairs'] = {}
 
@@ -49,7 +49,6 @@ class RateStorage:
                 "rate": str(rate),
                 "timestamp": now_iso,
                 "source": source,
-                # Метаданные о запросе (для примера оставим пустыми, т.к. у нас их нет)
                 "meta": {}
             }
 

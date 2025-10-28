@@ -34,8 +34,14 @@ class CoinGeckoClient(BaseApiClient):
 
             return standardized_rates
 
-        except requests.exceptions.RequestException as e:
-            raise ApiRequestError(f"Network or HTTP error fetching CoinGecko: {e}")
+        except requests.exceptions.HTTPError as e:
+            # Handle HTTP errors
+            if e.response.status_code == 429:
+                raise ApiRequestError("CoinGecko is rate limiting us. Please try again later.")
+            else:
+                raise ApiRequestError(f"CoinGecko API request failed with status code {e.response.status_code}: {e}")
+        except requests.exceptions.HTTPError as e:
+            raise ApiRequestError(f"CoinGecko API error: {e}") from e
 
 
 class ExchangeRateApiClient(BaseApiClient):
@@ -50,14 +56,17 @@ class ExchangeRateApiClient(BaseApiClient):
         url = f"{config.EXCHANGERATE_API_URL}/{key}/latest/{base}"
 
         try:
-            # print(f"ExchangeRateAPI URL: {url}")
             response = requests.get(url, timeout=config.REQUEST_TIMEOUT)
-            response.raise_for_status()
+            response.raise_for_status()  # Raises HTTPError for bad responses
+
             data = response.json()
-            # print(f"ExchangeRateAPI Response Data: {data}") # Добавлено
 
             if data.get("result") != "success":
-                raise ApiRequestError(f"API returned failure: {data.get('error-type', 'Unknown')}")
+                error_type = data.get('error-type', 'Unknown')
+                if error_type == 'invalid-key':
+                    raise ApiRequestError("Invalid API key for ExchangeRate-API.")
+                else:
+                    raise ApiRequestError(f"ExchangeRate-API returned failure: {error_type}")
 
             standardized_rates = {}
             for fiat_code, rate_str in data.get("conversion_rates", {}).items():
@@ -68,5 +77,15 @@ class ExchangeRateApiClient(BaseApiClient):
 
             return standardized_rates
 
+        except requests.exceptions.HTTPError as e:
+            # Handle HTTP errors
+            if e.response.status_code == 401:
+                raise ApiRequestError("ExchangeRate-API: Authentication failed. Check your API key.")
+            elif e.response.status_code == 403:
+                raise ApiRequestError("ExchangeRate-API: You don't have permission to access this resource.")
+            elif e.response.status_code == 429:
+                raise ApiRequestError("ExchangeRate-API is rate limiting us. Please try again later.")
+            else:
+                raise ApiRequestError(f"ExchangeRate-API request failed with status code {e.response.status_code}: {e}")
         except requests.exceptions.RequestException as e:
-            raise ApiRequestError(f"Network or HTTP error fetching ExchangeRate-API: {e}")
+            raise ApiRequestError(f"Network error: {e}") from e

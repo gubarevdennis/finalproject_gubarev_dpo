@@ -26,13 +26,11 @@ class RateManager:
     def get_rates(self):
         rates_data = database_manager.get_rates()
 
-        # Если rates_data пуст или нет last_refresh, вызываем refresh_rates (который теперь должен быть в Parser)
+        # Если rates_data пуст или нет last_refresh, вызываем refresh_rates
         last_refresh_str = rates_data.get("last_refresh")
 
         if (not last_refresh_str or
             (datetime.utcnow() - datetime.fromisoformat(last_refresh_str)).total_seconds() > self.rate_ttl_seconds):
-            # ВНИМАНИЕ: В реальной системе здесь бы вызывался Parser Service.
-            # Сейчас мы вынуждены симулировать обновление, чтобы избежать падений.
             self.refresh_rates()
             rates_data = database_manager.get_rates()
 
@@ -48,7 +46,7 @@ class RateManager:
 
         for pair, rate in self.mock_exchange_rates.items():
             from_currency, to_currency = pair.split('_')
-            # Сохраняем в формате, который ожидает Core (из rates.json ТЗ)
+            # Сохраняем в формате, который ожидает Core (из rates.json)
             rates_data["pairs"][pair] = {"rate": str(rate), "updated_at": rates_data["last_refresh"]}
 
         database_manager.save_rates(rates_data)

@@ -2,12 +2,12 @@
 import re
 from decimal import Decimal
 
-from .currencies import get_currency  # Correct import for get_currency
+from .currencies import get_currency 
 from .exceptions import CurrencyNotFoundError, InsufficientFundsError, ValidationError
 
 
 class Currency:
-    """Абстрактный базовый класс для всех валют."""
+    """Абстрактный базовый класс для всех валют"""
 
     def __init__(self, name: str, code: str):
         self._validate_code(code)
@@ -80,7 +80,7 @@ class FiatCurrency(Currency):
 
 
 class CryptoCurrency(Currency):
-    """Класс для криптовалют."""
+    """Класс для криптовалют"""
 
     def __init__(self, name: str, code: str, algorithm: str, market_cap: Decimal):
         super().__init__(name, code)
@@ -119,9 +119,9 @@ class CryptoCurrency(Currency):
         return f"[CRYPTO] {self.code} — {self.name} (Algo: {self.algorithm}, MCAP: {self.market_cap:.2e})"
 
 
-# --- User Class (из предыдущей версии) ---
+# --- User Class ---
 class User:
-    """Пользователь системы."""
+    """Пользователь системы"""
 
     def __init__(self, user_id: int, username: str, hashed_password: str, salt: str, registration_date: str):
         self._user_id = user_id
@@ -269,10 +269,10 @@ class Portfolio:
             else:
                 rate_key = f"{currency_code}_{base_currency}"
 
-                # Важно: Проверяем наличие курса в 'rates' и сам курс
+                # Проверяем наличие курса в 'rates' и сам курс
                 rate_info = exchange_rates.get('pairs', {}).get(rate_key)
 
-                # Важно: Если rate_info нет, попробуем перевернуть пару валют (base->currency)
+                # Если rate_info нет, попробуем перевернуть пару валют (base->currency)
                 if not rate_info and base_currency != 'USD':
                     rate_key_reversed = f"{base_currency}_{currency_code}"
                     rate_info = exchange_rates.get('pairs', {}).get(rate_key_reversed)
@@ -280,7 +280,7 @@ class Portfolio:
                         try:
                             rate_value = Decimal('1.0') / Decimal(rate_info['rate'])
                             total_value += balance * rate_value
-                            continue  # <--- Важно: переходим к следующей валюте
+                            continue  # переходим к следующей валюте
                         except (ValueError, TypeError, ZeroDivisionError):
                             pass  # Обработка ошибки (лог или что-то еще)
                 if rate_info and 'rate' in rate_info:
@@ -293,7 +293,7 @@ class Portfolio:
         return total_value
 
     def get_wallet(self, currency_code: str) -> Wallet:
-        """Возвращает объект Wallet по коду валюты."""
+        """Возвращает объект Wallet по коду валюты"""
         currency_code = currency_code.upper()
         if currency_code not in self._wallets:
             raise CurrencyNotFoundError(f"Кошелек для валюты '{currency_code}' не найден в портфеле.",
