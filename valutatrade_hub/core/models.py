@@ -238,18 +238,26 @@ class Portfolio:
     def wallets(self) -> dict[str, Wallet]:
         return self._wallets.copy()
 
-    def add_currency(self, currency_code: str):
-        """Добавляет новый кошелёк в портфель (если его ещё нет)."""
+    def add_currency(self, currency_code: str) -> 'Wallet': # Добавил возврат типа Wallet
+        """
+        Добавляет новый кошелёк в портфель, если его нет. 
+        Если кошелек уже существует, возвращает существующий объект Wallet.
+        """
         currency_code = currency_code.upper()
+        
         try:
-            get_currency(currency_code)  # Проверка существования валюты
+            get_currency(currency_code)  # Проверка существования валюты в справочнике
         except CurrencyNotFoundError as e:
+            # Оставляем проверку, что валюта вообще валидна в системе
             raise ValidationError(f"Недопустимый код валюты: {e}") from e
 
-        if currency_code in self._wallets:
-            raise ValidationError(f"Кошелек для валюты '{currency_code}' уже существует.")
-
-        self._wallets[currency_code] = Wallet(currency_code=currency_code)
+        if currency_code not in self._wallets:
+            # Создаем новый кошелек, если он не найден
+            self._wallets[currency_code] = Wallet(currency_code=currency_code)
+            # Здесь можно добавить лог, что кошелек был создан, если нужно.
+        
+        # Возвращаем существующий или только что созданный кошелек
+        return self._wallets[currency_code]
 
     def get_total_value(self, base_currency='USD', exchange_rates=None) -> Decimal:
         """Возвращает общую стоимость всех валют пользователя в указанной базовой валюте."""

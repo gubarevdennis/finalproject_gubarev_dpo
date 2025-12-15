@@ -94,41 +94,41 @@ finalproject_gubarev_dpo/
 ## Команды CLI
 
 ### Регистрация пользователя
-`project register –username <имя_пользователя> –password <пароль>`
+`register –username <имя_пользователя> –password <пароль>`
  
 
 ### Вход пользователя
-`project login –username <имя_пользователя> –password <пароль>`
+`login –username <имя_пользователя> –password <пароль>`
  
 
 ### Просмотр портфеля
-`project show-portfolio [–base <валюта>]`
+`show-portfolio [–base <валюта>]`
  
 
 *   `--base`: Базовая валюта для отображения стоимости портфеля (по умолчанию USD).
 
 ### Покупка валюты
-`project buy –currency <код_валюты> –amount <сумма>`
+`buy –currency <код_валюты> –amount <сумма>`
  
 
 ### Продажа валюты
-`project sell –currency <код_валюты> –amount <сумма>`
+`sell –currency <код_валюты> –amount <сумма>`
 
 ### Получение курса валюты
-`project get-rate –pair <валютная_пара>`
+`get-rate –pair <валютная_пара>`
  
 
-Пример: `project get-rate --pair BTC/USD`
+Пример: `get-rate --pair BTC/USD`
 
 ### Просмотр курсов валют
-`project show-rates [–currency <код_валюты>] [–top <количество>]`
+`show-rates [–currency <код_валюты>] [–top <количество>]`
  
 
 *   `--currency`: Фильтр по валюте.
 *   `--top`: Отображает N самых дорогих валют.
 
 ### Обновление курсов валют
-`project update-rates [–source <источник>]`
+`update-rates [–source <источник>]`
  
 
 *   `--source`: Источник данных (`coingecko` или `exchangerate`). По умолчанию - оба.

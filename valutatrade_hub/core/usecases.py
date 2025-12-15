@@ -131,11 +131,27 @@ def show_portfolio(user_id, base_currency=BASE_CURRENCY):
 
 @log_action(verbose=True)
 def buy_currency(user_id, currency, amount):
-    """Покупка валюты."""
-    currency = currency.upper()
+    """Покупка валюты"""
+    
+    # Валидация исходных данных
+    
+    # 1. Проверка типа amount
+    if not isinstance(amount, (int, float, str)):
+        # Используем стандартное исключение для валидации, если тип данных неверен
+        raise ValidationError(f"'amount' должен быть числом (int, float) или строкой. Получен тип: {type(amount).__name__}")
+    
+    # 2. Проверка на положительное значение
+    # Приводим к Decimal сразу для безопасной работы с финансовыми данными
+    try:
+        amount_dec = Decimal(str(amount))
+    except Exception:
+        # Ловим случай, когда строка передана, но не является числом (например, 'abc')
+        raise ValidationError(f"'amount' '{amount}' не может быть преобразован в числовое значение.")
 
-    if amount <= 0:
+    if amount_dec <= 0:
         raise ValidationError("'amount' должен быть положительным числом")
+    
+    currency = currency.upper()
 
     try:
         get_currency(currency)
@@ -160,8 +176,7 @@ def buy_currency(user_id, currency, amount):
         raise ApiRequestError(f"Курс {currency}→{BASE_CURRENCY} устарел. Обновите курсы.")
 
     rate = Decimal(rate_info['rate'])
-    amount_dec = Decimal(str(amount))
-    cost = amount_dec * rate
+    cost = amount_dec * rate # Используем amount_dec
 
     # Автоматическое создание кошелька, если его нет
     if 'wallets' not in portfolio_raw:
@@ -193,7 +208,6 @@ def buy_currency(user_id, currency, amount):
     database_manager.save_portfolios(portfolios)
 
     return f"Покупка выполнена: {amount_dec:.4f} {currency} по курсу {rate:.2f} {BASE_CURRENCY}/{currency}"
-
 
 @log_action(verbose=True)
 def sell_currency(user_id, currency, amount):
