@@ -5,6 +5,10 @@ description = ""
 authors = [
     {name = "Denis Gubarev",email = "dengubareff@yandex.ru"}
 ]
+
+readme = "README.md"
+# Другие зависимости (packages, tool.poetry.dependencies и т.д.)
+
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
@@ -12,7 +16,6 @@ dependencies = [
     "prettytable (>=3.16.0,<4.0.0)",
     "python-dotenv (>=1.1.1,<2.0.0)"
 ]
-
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
@@ -32,7 +35,7 @@ dev = [
     "pytest (>=8.4.2,<9.0.0)"
 ]
 
-[tool.ruff]
+[tool.poetry.group.dev.dependencies]
 line-length = 120
 select = ["E", "W", "F", "I", "B", "B904", "C901"]  # Выберите нужные правила
 ignore = []  # Начните с пустого списка и добавляйте исключения, если нужно
